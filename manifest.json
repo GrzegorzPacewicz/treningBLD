@@ -1,0 +1,18 @@
+{
+  "name": "BLD Training Tracker",
+  "short_name": "BLD Tracker",
+  "description": "Habit tracker do treningu blindfolded speedcubingu",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#F7F6F3",
+  "theme_color": "#E86A17",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
