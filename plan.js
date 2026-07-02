@@ -63,7 +63,7 @@ const PLAN = {
   // Definicje zadań
   tasks: {
     // Poniedziałek (1) — solidna baza 3BLD
-    monday: [{ id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" }],
+    monday: [{ id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" }],
 
     // Wtorek (2) — praca nad słabszymi elementami
     tuesday: [
@@ -79,13 +79,11 @@ const PLAN = {
     // Czwartek (4) — 4BLD (rampa) + centra
     thursday: [
       { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba" },
-      { id: "centers", text: "Centra (4/5BLD)", detail: "drill" },
+      { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
     ],
 
     // Piątek (5) — lekki dzień przed weekendem
-    friday: [
-      { id: "solve3bld_light", text: "3BLD lekko", detail: "8–10 prób" },
-    ],
+    friday: [{ id: "solve3bld_light", text: "3BLD lekko", detail: "10 prób" }],
 
     // Sobota (6) — PEAK: wszystkie 3 dyscypliny
     saturday: [

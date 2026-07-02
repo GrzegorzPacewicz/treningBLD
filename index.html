@@ -4,11 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BLD Training Tracker</title>
-    <meta name="description" content="Habit tracker do treningu blindfolded speedcubingu" />
+    <meta
+      name="description"
+      content="Habit tracker do treningu blindfolded speedcubingu"
+    />
     <meta name="theme-color" content="#E86A17" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="BLD Tracker" />
+    <meta name="apple-mobile-web-app-title" content="Trening BLD" />
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -648,7 +651,8 @@
       // Constants from PLAN
       const START_DATE = PLAN.startDate;
       const END_DATE = PLAN.endDate;
-      const TOTAL_DAYS = Math.round((END_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
+      const TOTAL_DAYS =
+        Math.round((END_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
       const DAY_NAMES = ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
       const DAY_NAMES_FULL = [
@@ -675,7 +679,15 @@
         "Grudzień",
       ];
 
-      const DAY_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const DAY_MAP = [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+      ];
 
       // Helper functions
       function formatDateKey(date) {
@@ -713,20 +725,28 @@
         const count4bld = get4BLDCount(date);
 
         for (const taskDef of dayTasks) {
-          if (taskDef.type === '4bld_ramp') {
+          if (taskDef.type === "4bld_ramp") {
             if (count4bld > 0) {
               for (let i = 1; i <= count4bld; i++) {
                 tasks.push({
                   id: `${taskDef.idPrefix}_${i}`,
                   text: `${taskDef.text} ${i}`,
-                  detail: taskDef.detail || ''
+                  detail: taskDef.detail || "",
                 });
               }
             }
           } else {
-            const task = { id: taskDef.id, text: taskDef.text, detail: taskDef.detail || '' };
+            const task = {
+              id: taskDef.id,
+              text: taskDef.text,
+              detail: taskDef.detail || "",
+            };
             if (taskDef.or) {
-              task.or = { id: taskDef.or.id, text: taskDef.or.text, detail: taskDef.or.detail || '' };
+              task.or = {
+                id: taskDef.or.id,
+                text: taskDef.or.text,
+                detail: taskDef.or.detail || "",
+              };
             }
             tasks.push(task);
           }
