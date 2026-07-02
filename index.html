@@ -610,26 +610,9 @@
     </div>
 
     <!-- Focus Card -->
-    <div class="focus-card">
+    <div class="focus-card" id="focus-card">
       <h3>Na co położyć nacisk</h3>
-      <div class="focus-item">
-        <strong>3BLD</strong>
-        <p>
-          Stabilność > prędkość, cel 0 DNF (rogi wciąż się domykają po nauce
-          nowej metody)
-        </p>
-      </div>
-      <div class="focus-item">
-        <strong>4BLD i 5BLD</strong>
-        <p>
-          Kolejność: exec→memo. W 3BLD zostaje: memo rogi→memo krawędzie→exec
-          krawędzie→exec rogi
-        </p>
-      </div>
-      <div class="focus-item">
-        <strong>5BLD</strong>
-        <p>Liczy się regularność, cel czasowy 15–20 min</p>
-      </div>
+      <div id="focus-content"></div>
     </div>
 
     <!-- Today Card -->
@@ -660,11 +643,12 @@
       </div>
     </div>
 
+    <script src="plan.js"></script>
     <script>
-      // Constants
-      const START_DATE = new Date(2026, 6, 1); // July 1, 2026
-      const END_DATE = new Date(2026, 7, 31); // August 31, 2026
-      const TOTAL_DAYS = 62;
+      // Constants from PLAN
+      const START_DATE = PLAN.startDate;
+      const END_DATE = PLAN.endDate;
+      const TOTAL_DAYS = Math.round((END_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
       const DAY_NAMES = ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
       const DAY_NAMES_FULL = [
@@ -691,14 +675,7 @@
         "Grudzień",
       ];
 
-      // 4BLD ramp dates: 2 attempts
-      const RAMP_2_DATES = [
-        "2026-07-02",
-        "2026-07-05",
-        "2026-07-09",
-        "2026-07-12",
-      ];
-      const RAMP_4_START = new Date(2026, 6, 16); // July 16, 2026
+      const DAY_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
       // Helper functions
       function formatDateKey(date) {
@@ -723,122 +700,36 @@
 
       function get4BLDCount(date) {
         const dateKey = formatDateKey(date);
-        if (RAMP_2_DATES.includes(dateKey)) return 2;
-        if (date >= RAMP_4_START) return 4;
+        if (PLAN.ramp4BLD.dates2attempts.includes(dateKey)) return 2;
+        if (date >= PLAN.ramp4BLD.fullRampStart) return 4;
         return 0;
       }
 
       function getTasksForDay(date) {
         const dayOfWeek = date.getDay();
+        const dayName = DAY_MAP[dayOfWeek];
+        const dayTasks = PLAN.tasks[dayName] || [];
         const tasks = [];
         const count4bld = get4BLDCount(date);
 
-        switch (dayOfWeek) {
-          case 1: // Monday
-            tasks.push({
-              id: "solve3bld",
-              text: "3BLD solve'y",
-              detail: "15–20 prób",
-            });
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
-          case 2: // Tuesday
-            tasks.push({
-              id: "rest",
-              text: "Odpoczynek",
-              detail: "brak kostek",
-            });
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
-          case 3: // Wednesday
-            tasks.push({
-              id: "solve3bld",
-              text: "3BLD solve'y",
-              detail: "15–20 prób",
-            });
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
-          case 4: // Thursday
+        for (const taskDef of dayTasks) {
+          if (taskDef.type === '4bld_ramp') {
             if (count4bld > 0) {
               for (let i = 1; i <= count4bld; i++) {
                 tasks.push({
-                  id: `p4_${i}`,
-                  text: `4BLD próba ${i}`,
-                  detail: "",
+                  id: `${taskDef.idPrefix}_${i}`,
+                  text: `${taskDef.text} ${i}`,
+                  detail: taskDef.detail || ''
                 });
               }
             }
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
-          case 5: // Friday
-            tasks.push({
-              id: "fri_choice",
-              text: "3BLD lekko",
-              detail: "8–10 prób",
-              or: { id: "fri_anki_only", text: "Anki", detail: "20 kart" },
-            });
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
-          case 6: // Saturday
-            tasks.push({
-              id: "warmup3bld",
-              text: "3BLD rozgrzewka",
-              detail: "10 prób",
-            });
-            tasks.push({ id: "sat_4bld_1", text: "4BLD próba 1", detail: "" });
-            tasks.push({ id: "sat_4bld_2", text: "4BLD próba 2", detail: "" });
-            tasks.push({
-              id: "sat_5bld",
-              text: "5BLD",
-              detail: "1 próba, cel 15–20 min",
-            });
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
-          case 0: // Sunday
-            tasks.push({
-              id: "solve3bld",
-              text: "3BLD solve'y",
-              detail: "15–20 prób",
-            });
-            if (count4bld > 0) {
-              for (let i = 1; i <= count4bld; i++) {
-                tasks.push({
-                  id: `sun_p4_${i}`,
-                  text: `4BLD próba ${i}`,
-                  detail: "",
-                });
-              }
+          } else {
+            const task = { id: taskDef.id, text: taskDef.text, detail: taskDef.detail || '' };
+            if (taskDef.or) {
+              task.or = { id: taskDef.or.id, text: taskDef.or.text, detail: taskDef.or.detail || '' };
             }
-            tasks.push({
-              id: "anki",
-              text: "Anki – seria powtórek",
-              detail: "rogi",
-            });
-            break;
+            tasks.push(task);
+          }
         }
 
         return tasks;
@@ -992,6 +883,21 @@
         document
           .getElementById("heatmap-section")
           .classList.toggle("collapsed");
+      }
+
+      function renderFocusCard() {
+        const container = document.getElementById("focus-content");
+        container.innerHTML = "";
+
+        for (const item of PLAN.focus) {
+          const div = document.createElement("div");
+          div.className = "focus-item";
+          div.innerHTML = `
+            <strong>${item.title}</strong>
+            <p>${item.description}</p>
+          `;
+          container.appendChild(div);
+        }
       }
 
       function renderTaskItem(task, data, date, container, isModal = false) {
@@ -1222,6 +1128,7 @@
       function renderAll() {
         renderStatsBar();
         renderHeatmap();
+        renderFocusCard();
         renderTodayCard();
         renderHistory();
       }
