@@ -39,7 +39,7 @@ const PLAN = {
         "Cel to ponad 40% skuteczności, nie tempo — tempo przyjdzie samo",
     },
     {
-      title: "5BLD = pełnoprawny cel",
+      title: "5BLD to cel do spełnienia",
       description:
         "Dążę do tego, żeby 5BLD było w pełni opanowane, a nie tylko „przypadkowe” ułożenia",
     },
@@ -49,7 +49,7 @@ const PLAN = {
         "4bld przygotowuje do 5bld. Skupiam się na robieniu regularnych ułożeń",
     },
     {
-      title: "Rogi/krawędzie-only",
+      title: "Rogi/krawędzie",
       description:
         "Trening samych rogów i samych krawędzi na czas jest tak samo ważny jak pełne ułożenia.",
     },
@@ -90,7 +90,7 @@ const PLAN = {
       { id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" },
       { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
       { id: "sat_5bld", text: "5BLD", detail: "1 próba" },
-      { id: "centers", text: "Centra (4/5BLD)", detail: "drill" },
+      { id: "centers", text: "Centry (4/5BLD)", detail: "1" },
     ],
 
     // Niedziela (0) — PEAK: wszystkie 3 dyscypliny
@@ -98,7 +98,7 @@ const PLAN = {
       { id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" },
       { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba" },
       { id: "sun_5bld", text: "5BLD", detail: "1 próba" },
-      { id: "centers", text: "Centra (4/5BLD)", detail: "drill" },
+      { id: "centers", text: "Centry (4/5BLD)", detail: "próba" },
     ],
   },
 };
