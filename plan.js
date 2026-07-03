@@ -5,7 +5,7 @@
  * Aplikacja automatycznie załaduje zmiany po odświeżeniu.
  */
 
-const PLAN = {
+var PLAN = {
   // Okres trwania programu
   startDate: new Date(2026, 6, 1), // 1 lipca 2026
   endDate: new Date(2026, 7, 31), // 31 sierpnia 2026
@@ -102,3 +102,7 @@ const PLAN = {
     ],
   },
 };
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = PLAN;
+}
