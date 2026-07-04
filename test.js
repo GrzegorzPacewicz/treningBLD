@@ -88,8 +88,9 @@ test("get4BLDCount: returns 4 exactly on fullRampStart date", () => {
 test("getTasksForDay: returns monday tasks", () => {
   const monday = new Date(2026, 6, 6); // 6 lipca 2026 (poniedziałek)
   const tasks = getTasksForDay(monday);
-  assert.strictEqual(tasks.length, 1);
+  assert.strictEqual(tasks.length, 2);
   assert.strictEqual(tasks[0].id, "solve3bld");
+  assert.strictEqual(tasks[1].id, "mon_5bld");
 });
 
 test("getTasksForDay: returns tuesday tasks (corners + edges)", () => {
@@ -126,7 +127,7 @@ test("isDayComplete: returns full=false, partial=false for empty day", () => {
 test("isDayComplete: returns full=true when all tasks done", () => {
   localStorage.clear();
   const monday = new Date(2026, 6, 6);
-  localStorage.setItem("day:2026-07-06", JSON.stringify({ solve3bld: true }));
+  localStorage.setItem("day:2026-07-06", JSON.stringify({ solve3bld: true, mon_5bld: true }));
   const status = isDayComplete(monday);
   assert.strictEqual(status.full, true);
   assert.strictEqual(status.partial, false);
@@ -147,26 +148,29 @@ test("isDayComplete: returns partial=true when some tasks done", () => {
 // calculateStreak tests
 test("calculateStreak: includes today when completed", () => {
   localStorage.clear();
-  // Symulujemy 3 lipca 2026 jako "dziś" - piątek
-  // Ustawiamy dane dla 1, 2, 3 lipca (środa, czwartek, piątek)
-  localStorage.setItem(
-    "day:2026-07-01",
-    JSON.stringify({ solve3bld: true }) // środa - ale środa ma inne zadania
-  );
-  // Właściwie musimy ustawić poprawne zadania dla każdego dnia
+  // Test używa getEffectiveToday() który zwraca START_DATE gdy "dziś" jest przed startem
+  // W środowisku testowym "dziś" to 4 lipca 2026 (aktualna data systemowa)
+  // Ale getEffectiveToday() zwróci START_DATE (1 lipca) jeśli data jest poza zakresem
+  // lub faktyczną datę jeśli jest w zakresie
+  //
   // 1 lipca (środa): solve3bld
   // 2 lipca (czwartek): p4_1, p4_2, centers (2 próby 4BLD)
   // 3 lipca (piątek): solve3bld_light
+  // 4 lipca (sobota): solve3bld, sat_p4_1, sat_p4_2, centers (sobota przed fullRampStart)
   localStorage.setItem("day:2026-07-01", JSON.stringify({ solve3bld: true }));
   localStorage.setItem(
     "day:2026-07-02",
     JSON.stringify({ p4_1: true, p4_2: true, centers: true })
   );
   localStorage.setItem("day:2026-07-03", JSON.stringify({ solve3bld_light: true }));
+  localStorage.setItem(
+    "day:2026-07-04",
+    JSON.stringify({ solve3bld: true, sat_p4_1: true, sat_p4_2: true, centers: true })
+  );
 
-  // Streak powinien być 3 (1, 2, 3 lipca)
+  // Streak powinien być 4 (1, 2, 3, 4 lipca)
   const streak = calculateStreak();
-  assert.strictEqual(streak, 3);
+  assert.strictEqual(streak, 4);
 });
 
 test("calculateStreak: returns 0 when today not completed", () => {

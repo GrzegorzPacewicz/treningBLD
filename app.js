@@ -165,9 +165,11 @@ function getEffectiveToday() {
 }
 
 function getWeekOfProgram(date) {
-  const diffTime = date - START_DATE;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  return Math.floor(diffDays / 7);
+  const weekStart = getWeekStart(date);
+  const firstMonday = getWeekStart(START_DATE);
+  const diffTime = weekStart - firstMonday;
+  const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+  return diffWeeks;
 }
 
 function getWeekStart(date) {
@@ -196,7 +198,7 @@ function renderStatsBar() {
     `${fullDays}/${TOTAL_DAYS}`;
   document.getElementById("streak-count").textContent = calculateStreak();
 
-  // Week progress
+  // Week progress (Monday-Sunday)
   const weekProgressEl = document.getElementById("week-progress");
   weekProgressEl.innerHTML = "";
 
@@ -218,40 +220,76 @@ function renderStatsBar() {
   }
 }
 
-function renderHeatmap() {
-  const grid = document.getElementById("heatmap-grid");
-  grid.innerHTML = "";
+function renderProgressBar() {
   const today = getEffectiveToday();
+  let completedDays = 0;
 
   for (let i = 0; i < TOTAL_DAYS; i++) {
     const date = new Date(START_DATE);
     date.setDate(date.getDate() + i);
+    if (isDayComplete(date).full) completedDays++;
+  }
 
-    const cell = document.createElement("div");
-    cell.className = "heatmap-cell";
-    cell.title = `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
+  const percent = Math.round((completedDays / TOTAL_DAYS) * 100);
+  document.getElementById("progress-percent").textContent = `${percent}%`;
+  document.getElementById("progress-fill").style.width = `${percent}%`;
 
-    if (formatDateKey(date) === formatDateKey(today)) {
-      cell.classList.add("today");
-    }
+  // Today marker position
+  const daysPassed = Math.floor((today - START_DATE) / (1000 * 60 * 60 * 24));
+  const todayPercent = Math.min(100, Math.max(0, (daysPassed / TOTAL_DAYS) * 100));
+  document.getElementById("progress-today").style.left = `calc(${todayPercent}% - 1px)`;
+}
 
-    const status = isDayComplete(date);
-    if (status.full) {
-      cell.classList.add("full");
-    } else if (status.partial) {
-      cell.classList.add("partial");
-    } else if (date > today) {
-      cell.classList.add("future");
-    }
+function renderWeeklyPlan() {
+  const container = document.getElementById("weekly-plan-content");
+  container.innerHTML = "";
+  const today = getEffectiveToday();
+  const weekStart = getWeekStart(today);
 
-    grid.appendChild(cell);
+  const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const dayNamesPolish = {
+    monday: "Poniedziałek",
+    tuesday: "Wtorek",
+    wednesday: "Środa",
+    thursday: "Czwartek",
+    friday: "Piątek",
+    saturday: "Sobota",
+    sunday: "Niedziela"
+  };
+
+  for (let i = 0; i < 7; i++) {
+    const dayName = dayOrder[i];
+    const dayDate = new Date(weekStart);
+    dayDate.setDate(dayDate.getDate() + i);
+    const isToday = formatDateKey(dayDate) === formatDateKey(today);
+
+    const tasks = PLAN.tasks[dayName] || [];
+    if (tasks.length === 0) continue;
+
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "weekly-plan-day";
+    if (isToday) dayDiv.classList.add("is-today");
+
+    const taskTexts = tasks.map(t => {
+      if (t.type === "4bld_ramp") {
+        const count = get4BLDCount(dayDate);
+        return count > 0 ? `${t.text} (×${count})` : null;
+      }
+      const detail = t.detail ? ` (${t.detail})` : "";
+      return `${t.text}${detail}`;
+    }).filter(Boolean);
+
+    dayDiv.innerHTML = `
+      <div class="weekly-plan-day-header">${dayNamesPolish[dayName]}</div>
+      <div class="weekly-plan-day-tasks">${taskTexts.join(" • ")}</div>
+    `;
+
+    container.appendChild(dayDiv);
   }
 }
 
-function toggleHeatmap() {
-  document
-    .getElementById("heatmap-section")
-    .classList.toggle("collapsed");
+function toggleWeeklyPlan() {
+  document.getElementById("weekly-plan-card").classList.toggle("collapsed");
 }
 
 function renderFocusCard() {
@@ -496,14 +534,18 @@ function closeModal(event) {
 
 function renderAll() {
   renderStatsBar();
-  renderHeatmap();
+  renderProgressBar();
   renderFocusCard();
+  renderWeeklyPlan();
   renderTodayCard();
   renderHistory();
 }
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
+  // Start with weekly plan collapsed
+  document.getElementById("weekly-plan-card").classList.add("collapsed");
+
   renderAll();
 
   // Auto-scroll to today card

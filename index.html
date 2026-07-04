@@ -8,7 +8,7 @@
       name="description"
       content="Habit tracker do treningu blindfolded speedcubingu"
     />
-    <meta name="theme-color" content="#E86A17" />
+    <meta name="theme-color" content="#0d9488" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Trening BLD" />
@@ -40,14 +40,15 @@
       <div class="week-progress" id="week-progress"></div>
     </div>
 
-    <!-- Heatmap -->
-    <div class="heatmap-section" id="heatmap-section">
-      <div class="heatmap-header" onclick="toggleHeatmap()">
-        <h3>Postęp programu</h3>
-        <i class="ti ti-chevron-down"></i>
+    <!-- Progress Bar -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <span class="progress-label">Postęp programu</span>
+        <span class="progress-percent mono" id="progress-percent">0%</span>
       </div>
-      <div class="heatmap-content">
-        <div class="heatmap-grid" id="heatmap-grid"></div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+        <div class="progress-today" id="progress-today"></div>
       </div>
     </div>
 
@@ -55,6 +56,15 @@
     <div class="focus-card" id="focus-card">
       <h3>Na co położyć nacisk</h3>
       <div id="focus-content"></div>
+    </div>
+
+    <!-- Weekly Plan Card -->
+    <div class="weekly-plan-card" id="weekly-plan-card">
+      <div class="weekly-plan-header" onclick="toggleWeeklyPlan()">
+        <h3>Plan tygodniowy</h3>
+        <i class="ti ti-chevron-down"></i>
+      </div>
+      <div class="weekly-plan-content" id="weekly-plan-content"></div>
     </div>
 
     <!-- Today Card -->

@@ -4,8 +4,8 @@
   "description": "Habit tracker do treningu blindfolded speedcubingu",
   "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#F7F6F3",
-  "theme_color": "#E86A17",
+  "background_color": "#f4f7f7",
+  "theme_color": "#0d9488",
   "orientation": "portrait",
   "icons": [
     {

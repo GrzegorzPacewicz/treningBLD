@@ -1,11 +1,11 @@
 :root {
-  --bg: #f7f6f3;
+  --bg: #f4f7f7;
   --card: #ffffff;
-  --border: #d9d7d2;
-  --text: #222222;
-  --text-secondary: #6c6c6c;
-  --accent: #e86a17;
-  --today-bg: #fff7ef;
+  --border: #d2d9d9;
+  --text: #1a2626;
+  --text-secondary: #5c6c6c;
+  --accent: #0d9488;
+  --today-bg: #ecfdf5;
 }
 
 * {
@@ -86,76 +86,57 @@ body {
   );
 }
 
-/* Heatmap */
-.heatmap-section {
+/* Progress Bar */
+.progress-section {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  margin-bottom: 12px;
-  overflow: hidden;
-}
-
-.heatmap-header {
   padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  user-select: none;
+  margin-bottom: 12px;
 }
 
-.heatmap-header h3 {
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-label {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
-.heatmap-header i {
-  color: var(--text-secondary);
-  transition: transform 0.2s;
+.progress-percent {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
 }
 
-.heatmap-section.collapsed .heatmap-header i {
-  transform: rotate(-90deg);
-}
-
-.heatmap-section.collapsed .heatmap-content {
-  display: none;
-}
-
-.heatmap-content {
-  padding: 0 16px 16px;
-}
-
-.heatmap-grid {
-  display: grid;
-  grid-template-columns: repeat(14, 1fr);
-  gap: 3px;
-}
-
-.heatmap-cell {
-  aspect-ratio: 1;
-  border-radius: 2px;
+.progress-bar {
+  position: relative;
+  height: 8px;
   background: var(--border);
-  min-width: 0;
-  max-width: 18px;
+  border-radius: 4px;
+  overflow: visible;
 }
 
-.heatmap-cell.full {
+.progress-fill {
+  height: 100%;
   background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
 }
 
-.heatmap-cell.partial {
-  background: #f5b48a;
-}
-
-.heatmap-cell.today {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.heatmap-cell.future {
-  background: #edebe8;
+.progress-today {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--text);
+  border-radius: 1px;
+  transition: left 0.3s ease;
 }
 
 /* Focus Card */
@@ -193,6 +174,78 @@ body {
   font-size: 13px;
   color: var(--text-secondary);
   margin-top: 2px;
+}
+
+/* Weekly Plan Card */
+.weekly-plan-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.weekly-plan-card.collapsed .weekly-plan-content {
+  display: none;
+}
+
+.weekly-plan-card.collapsed .weekly-plan-header i {
+  transform: rotate(-90deg);
+}
+
+.weekly-plan-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.weekly-plan-header:hover {
+  background: #fafaf9;
+}
+
+.weekly-plan-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.weekly-plan-header i {
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.weekly-plan-content {
+  border-top: 1px solid var(--border);
+}
+
+.weekly-plan-day {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.weekly-plan-day:last-child {
+  border-bottom: none;
+}
+
+.weekly-plan-day.is-today {
+  background: var(--today-bg);
+  border-left: 3px solid var(--accent);
+  padding-left: 13px;
+}
+
+.weekly-plan-day-header {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.weekly-plan-day-tasks {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 /* Today Card */

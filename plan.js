@@ -75,9 +75,7 @@ var PLAN = {
     ],
 
     // Środa (3) — solidna baza 3BLD
-    wednesday: [
-      { id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" },
-    ],
+    wednesday: [{ id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" }],
 
     // Czwartek (4) — 4BLD (rampa) + centra
     thursday: [
@@ -90,14 +88,14 @@ var PLAN = {
 
     // Sobota (6) — PEAK: wszystkie 3 dyscypliny
     saturday: [
-      { id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" },
+      { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
       { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
       { id: "centers", text: "Centry (4/5BLD)", detail: "1" },
     ],
 
     // Niedziela (0) — PEAK: wszystkie 3 dyscypliny
     sunday: [
-      { id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" },
+      { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
       { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba" },
       { id: "sun_5bld", text: "5BLD", detail: "1 próba" },
       { id: "centers", text: "Centry (4/5BLD)", detail: "próba" },
