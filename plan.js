@@ -63,12 +63,15 @@ var PLAN = {
   // Definicje zadań
   tasks: {
     // Poniedziałek (1) — solidna baza 3BLD
-    monday: [{ id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" }],
+    monday: [
+      { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
+      { id: "mon_5bld", text: "5BLD", detail: "1 próba" },
+    ],
 
     // Wtorek (2) — praca nad słabszymi elementami
     tuesday: [
-      { id: "corners_only", text: "Rogi-only", detail: "min. 20 prób" },
-      { id: "edges_only", text: "Krawędzie-only", detail: "min. 20 prób" },
+      { id: "corners_only", text: "Rogi", detail: "min. 20 prób" },
+      { id: "edges_only", text: "Krawędzie", detail: "min. 20 prób" },
     ],
 
     // Środa (3) — solidna baza 3BLD
@@ -89,7 +92,6 @@ var PLAN = {
     saturday: [
       { id: "solve3bld", text: "3BLD solve'y", detail: "15–20 prób" },
       { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
-      { id: "sat_5bld", text: "5BLD", detail: "1 próba" },
       { id: "centers", text: "Centry (4/5BLD)", detail: "1" },
     ],
 
