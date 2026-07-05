@@ -79,11 +79,7 @@ body {
 }
 
 .week-progress .day-dot.partial {
-  background: linear-gradient(
-    135deg,
-    var(--accent) 50%,
-    var(--border) 50%
-  );
+  background: linear-gradient(135deg, var(--accent) 50%, var(--border) 50%);
 }
 
 /* Progress Bar */
@@ -246,6 +242,27 @@ body {
 .weekly-plan-day-tasks {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.weekly-plan-variant {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.weekly-plan-variant .variant-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.weekly-plan-variant .variant-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
 /* Error Tags Card */
@@ -515,9 +532,26 @@ body {
   background: #fafaf9;
 }
 
+.week-header .week-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .week-header .week-title {
   font-size: 14px;
   font-weight: 500;
+}
+
+.week-header .week-variant-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--today-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .week-header .week-meta {

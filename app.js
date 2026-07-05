@@ -94,10 +94,18 @@ function get4BLDCount(date) {
   return 0;
 }
 
-function getTasksForDay(date) {
+function getWeekVariant(date) {
+  const weekStart = getWeekStart(date);
+  const weekKey = formatDateKey(weekStart);
+  return PLAN.WEEK_SCHEDULE[weekKey] || "default";
+}
+
+function getTasksForDate(date) {
   const dayOfWeek = date.getDay();
   const dayName = DAY_MAP[dayOfWeek];
-  const dayTasks = PLAN.tasks[dayName] || [];
+  const variant = getWeekVariant(date);
+  const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
+  const dayTasks = variantTasks[dayName] || [];
   const tasks = [];
   const count4bld = get4BLDCount(date);
 
@@ -130,6 +138,11 @@ function getTasksForDay(date) {
   }
 
   return tasks;
+
+}
+
+function getTasksForDay(date) {
+  return getTasksForDate(date);
 }
 
 function isDayComplete(date) {
@@ -272,6 +285,8 @@ function renderWeeklyPlan() {
   container.innerHTML = "";
   const today = getEffectiveToday();
   const weekStart = getWeekStart(today);
+  const variant = getWeekVariant(today);
+  const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
 
   const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   const dayNamesPolish = {
@@ -284,13 +299,23 @@ function renderWeeklyPlan() {
     sunday: "Niedziela"
   };
 
+  const variantHeader = document.createElement("div");
+  variantHeader.className = "weekly-plan-variant";
+  const variantName = variantTasks.name || variant;
+  const variantDesc = variantTasks.description || "";
+  variantHeader.innerHTML = `
+    <div class="variant-name">${variantName}</div>
+    ${variantDesc ? `<div class="variant-desc">${variantDesc}</div>` : ""}
+  `;
+  container.appendChild(variantHeader);
+
   for (let i = 0; i < 7; i++) {
     const dayName = dayOrder[i];
     const dayDate = new Date(weekStart);
     dayDate.setDate(dayDate.getDate() + i);
     const isToday = formatDateKey(dayDate) === formatDateKey(today);
 
-    const tasks = PLAN.tasks[dayName] || [];
+    const tasks = variantTasks[dayName] || [];
     if (tasks.length === 0) continue;
 
     const dayDiv = document.createElement("div");
@@ -519,6 +544,11 @@ function renderHistory() {
       const endDay = days[days.length - 1].getDate();
       const weekLabel = `${startDay}–${endDay} ${MONTH_NAMES[days[0].getMonth()]}`;
 
+      // Get variant for this week
+      const weekVariant = getWeekVariant(days[0]);
+      const variantData = PLAN.WEEK_VARIANTS[weekVariant] || PLAN.WEEK_VARIANTS.default;
+      const variantName = variantData.name || weekVariant;
+
       // Week progress mini
       let progressHtml = '<div class="week-progress-mini">';
       for (const day of days) {
@@ -532,7 +562,10 @@ function renderHistory() {
 
       weekAccordion.innerHTML = `
       <div class="week-header" onclick="toggleWeek(this)">
-        <span class="week-title">Tydzień ${parseInt(weekNum) + 1}</span>
+        <div class="week-title-group">
+          <span class="week-title">Tydzień ${parseInt(weekNum) + 1}</span>
+          <span class="week-variant-badge">${variantName}</span>
+        </div>
         <div class="week-meta">
           ${progressHtml}
           <i class="ti ti-chevron-down"></i>
@@ -661,6 +694,8 @@ if (typeof module !== "undefined" && module.exports) {
     formatDateKey,
     get4BLDCount,
     getTasksForDay,
+    getTasksForDate,
+    getWeekVariant,
     isDayComplete,
     calculateStreak,
     getEffectiveToday,
