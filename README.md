@@ -16,11 +16,12 @@ https://treningbld.grzegorzpacewicz.pl
 ## Funkcje
 
 - Codzienny tracker zadań z podziałem na dni tygodnia
+- **System wariantów tygodniowych** (periodyzacja treningu)
 - Pasek postępu programu (62 dni: lipiec–sierpień 2026)
 - Streak counter
-- Historia ukończonych dni
+- Historia ukończonych dni z badge'ami wariantów
 - Sekcja "Na co położyć nacisk" z zasadami treningowymi
-- Plan tygodniowy (rozwijalny)
+- Plan tygodniowy z opisem aktualnego wariantu
 - Tagi błędów 3BLD (domyślnie zwinięte)
 - Tryb offline (PWA)
 
@@ -45,7 +46,21 @@ Edytuj `plan.js`:
 - `goals` — cele na okres (dyscypliny + targety)
 - `ramp4BLD` — progresja 4BLD (daty z 2 próbami, start pełnej rampy)
 - `focus` — sekcja "Na co położyć nacisk"
-- `tasks` — zadania na każdy dzień tygodnia
+- `WEEK_VARIANTS` — szablony wariantów tygodniowych (default, focus_3bld, focus_duze)
+- `WEEK_SCHEDULE` — mapa tydzień→wariant (klucz: poniedziałek w formacie ISO)
+
+### Warianty tygodniowe
+
+- **default** — zbalansowany trening: 3BLD jako baza, 4/5BLD w chronionych slotach
+- **focus_3bld** — intensywny 3BLD (20-25 solvów), 4/5BLD tylko podtrzymanie
+- **focus_duze** — budowanie 4/5BLD, 3BLD zredukowane do 10 solvów/dzień
+
+Żeby przypisać wariant do tygodnia, dodaj wpis w `WEEK_SCHEDULE`:
+```js
+WEEK_SCHEDULE: {
+  "2026-07-06": "focus_3bld",  // tydzień 6-12 lipca
+}
+```
 
 Po edycji odśwież stronę.
 
