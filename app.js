@@ -4,6 +4,18 @@ const END_DATE = PLAN.endDate;
 const TOTAL_DAYS =
   Math.round((END_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
+const ERROR_TAGS = [
+  { code: "MEMO-ROG", label: "zapomniany/pomylony róg" },
+  { code: "MEMO-KRAW", label: "zapomniana/pomylona krawędź" },
+  { code: "MEMO-CEN", label: "błąd centrów (4/5BLD)" },
+  { code: "OZN", label: "niepewne/błędne oznaczenie litery" },
+  { code: "EXEC-POP", label: "pop kostki" },
+  { code: "EXEC-SETUP", label: "zły algorytm/setup obrotu" },
+  { code: "TPS", label: "za wolne tempo – obraz 'wygasł'" },
+  { code: "STRES", label: "zacięcie palców/distres" },
+  { code: "OK", label: "solve udany" },
+];
+
 const DAY_NAMES = ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
 const DAY_NAMES_FULL = [
   "Niedziela",
@@ -58,6 +70,21 @@ function getDayData(date) {
 function setDayData(date, data) {
   const key = getStorageKey(date);
   localStorage.setItem(key, JSON.stringify(data));
+}
+
+function getErrorTagsKey(date) {
+  return `tags:${formatDateKey(date)}`;
+}
+
+function getErrorTags(date) {
+  const key = getErrorTagsKey(date);
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : {};
+}
+
+function setErrorTags(date, tags) {
+  const key = getErrorTagsKey(date);
+  localStorage.setItem(key, JSON.stringify(tags));
 }
 
 function get4BLDCount(date) {
@@ -290,6 +317,67 @@ function renderWeeklyPlan() {
 
 function toggleWeeklyPlan() {
   document.getElementById("weekly-plan-card").classList.toggle("collapsed");
+}
+
+function toggleErrorTags() {
+  document.getElementById("error-tags-card").classList.toggle("collapsed");
+}
+
+function renderErrorTags() {
+  const container = document.getElementById("error-tags-content");
+  const today = getEffectiveToday();
+  const tags = getErrorTags(today);
+
+  let html = '<div class="error-tags-grid">';
+
+  for (const tag of ERROR_TAGS) {
+    const count = tags[tag.code] || 0;
+    const isOk = tag.code === "OK";
+    const selectedClass = count > 0 ? (isOk ? "selected ok-tag" : "selected") : "";
+
+    html += `
+      <div class="error-tag ${selectedClass}"
+           onclick="toggleErrorTag('${tag.code}')"
+           oncontextmenu="event.preventDefault(); resetErrorTag('${tag.code}')"
+           title="${tag.label} (PPM=reset)">
+        <span class="error-tag-code">${tag.code}</span>
+        ${count > 0 ? `<span class="error-tag-count">${count}</span>` : ""}
+      </div>
+    `;
+  }
+
+  html += "</div>";
+
+  const totalErrors = Object.entries(tags)
+    .filter(([code]) => code !== "OK")
+    .reduce((sum, [, count]) => sum + count, 0);
+  const okCount = tags["OK"] || 0;
+
+  if (totalErrors > 0 || okCount > 0) {
+    html += `<div class="error-tags-summary">`;
+    if (okCount > 0) html += `<strong>${okCount}</strong> udanych`;
+    if (okCount > 0 && totalErrors > 0) html += ` · `;
+    if (totalErrors > 0) html += `<strong>${totalErrors}</strong> błędów`;
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleErrorTag(code) {
+  const today = getEffectiveToday();
+  const tags = getErrorTags(today);
+  tags[code] = (tags[code] || 0) + 1;
+  setErrorTags(today, tags);
+  renderErrorTags();
+}
+
+function resetErrorTag(code) {
+  const today = getEffectiveToday();
+  const tags = getErrorTags(today);
+  delete tags[code];
+  setErrorTags(today, tags);
+  renderErrorTags();
 }
 
 function renderFocusCard() {
@@ -537,6 +625,7 @@ function renderAll() {
   renderProgressBar();
   renderFocusCard();
   renderWeeklyPlan();
+  renderErrorTags();
   renderTodayCard();
   renderHistory();
 }

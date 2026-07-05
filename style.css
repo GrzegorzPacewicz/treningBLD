@@ -248,6 +248,119 @@ body {
   color: var(--text-secondary);
 }
 
+/* Error Tags Card */
+.error-tags-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.error-tags-card.collapsed .error-tags-content {
+  display: none;
+}
+
+.error-tags-card.collapsed .error-tags-header i {
+  transform: rotate(-90deg);
+}
+
+.error-tags-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.error-tags-header:hover {
+  background: #fafaf9;
+}
+
+.error-tags-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.error-tags-header i {
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.error-tags-content {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+}
+
+.error-tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.error-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.error-tag:hover {
+  background: #eef1f1;
+}
+
+.error-tag.selected {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.error-tag.selected.ok-tag {
+  background: var(--today-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.error-tag-code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.error-tag-count {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  background: var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 2px;
+}
+
+.error-tag.selected .error-tag-count {
+  background: #fecaca;
+}
+
+.error-tag.selected.ok-tag .error-tag-count {
+  background: #a7f3d0;
+}
+
+.error-tags-summary {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* Today Card */
 .today-card {
   background: var(--today-bg);

@@ -49,56 +49,71 @@ var PLAN = {
         "4bld przygotowuje do 5bld. Skupiam się na robieniu regularnych ułożeń",
     },
     {
-      title: "Rogi/krawędzie",
+      title: "Rogi > krawędzie (na razie)",
       description:
-        "Trening samych rogów i samych krawędzi na czas jest tak samo ważny jak pełne ułożenia.",
+        "Za mało treningu rogów względem krawędzi — priorytet 25 rogów / 20 krawędzi tygodniowo, rozłożone jako rozgrzewki",
     },
     {
       title: "Minimum to podłoga, nie sufit",
       description:
         "Czerwiec pokazał 500+ solvów jest realne. 300 w lipcu to minimum, nie sufit.",
     },
+    {
+      title: "Prawdziwy odpoczynek",
+      description:
+        "Piątek to pełny rest bez kostki — stabilność wymaga regeneracji, nie tylko lżejszego treningu",
+    },
   ],
 
   // Definicje zadań
   tasks: {
-    // Poniedziałek (1) — solidna baza 3BLD
+    // Poniedziałek (1) — rogi jako rozgrzewka + baza 3BLD + 5BLD
     monday: [
+      { id: "corners_warmup_mon", text: "Rogi", detail: "15 (rozgrzewka)" },
       { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
       { id: "mon_5bld", text: "5BLD", detail: "1 próba" },
     ],
 
-    // Wtorek (2) — praca nad słabszymi elementami
+    // Wtorek (2) — najlżejszy dzień, tylko speed-memo
     tuesday: [
-      { id: "corners_only", text: "Rogi", detail: "min. 20 prób" },
-      { id: "edges_only", text: "Krawędzie", detail: "min. 20 prób" },
+      {
+        id: "speed_memo",
+        text: "Speed-memo",
+        detail: "10 min, limity 60s→45s→20s",
+      },
     ],
 
-    // Środa (3) — solidna baza 3BLD
-    wednesday: [{ id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" }],
+    // Środa (3) — rogi jako rozgrzewka + baza 3BLD
+    wednesday: [
+      { id: "corners_warmup_wed", text: "Rogi", detail: "10 (rozgrzewka)" },
+      { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
+    ],
 
-    // Czwartek (4) — 4BLD (rampa) + centra
+    // Czwartek (4) — dzień dużych kostek: 4BLD + 5BLD + centry
     thursday: [
       { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba" },
+      { id: "thu_5bld", text: "5BLD", detail: "1 próba" },
       { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
     ],
 
-    // Piątek (5) — lekki dzień przed weekendem
-    friday: [{ id: "solve3bld_light", text: "3BLD lekko", detail: "10 prób" }],
-
-    // Sobota (6) — PEAK: wszystkie 3 dyscypliny
-    saturday: [
-      { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
-      { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
-      { id: "centers", text: "Centry (4/5BLD)", detail: "1" },
+    // Piątek (5) — pełny odpoczynek
+    friday: [
+      { id: "rest", text: "Odpoczynek", detail: "pełny rest, bez kostki" },
     ],
 
-    // Niedziela (0) — PEAK: wszystkie 3 dyscypliny
+    // Sobota (6) — krawędzie jako rozgrzewka + 3BLD + 4BLD
+    saturday: [
+      { id: "edges_sat", text: "Krawędzie", detail: "10" },
+      { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
+      { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
+    ],
+
+    // Niedziela (0) — krawędzie jako rozgrzewka + 3BLD + 4BLD + przegląd centr
     sunday: [
+      { id: "edges_sun", text: "Krawędzie", detail: "10" },
       { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
       { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba" },
-      { id: "sun_5bld", text: "5BLD", detail: "1 próba" },
-      { id: "centers", text: "Centry (4/5BLD)", detail: "próba" },
+      { id: "centers_review", text: "Centry (4/5BLD)", detail: "2 próby" },
     ],
   },
 };
