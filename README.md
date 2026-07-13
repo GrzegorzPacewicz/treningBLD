@@ -44,10 +44,10 @@ Edytuj `plan.js`:
 
 - `startDate` / `endDate` — okres programu
 - `goals` — cele na okres (dyscypliny + targety)
-- `ramp4BLD` — progresja 4BLD (daty z 2 próbami, start pełnej rampy)
 - `focus` — sekcja "Na co położyć nacisk"
 - `WEEK_VARIANTS` — szablony wariantów tygodniowych (default, focus_3bld, focus_duze)
 - `WEEK_SCHEDULE` — mapa tydzień→wariant (klucz: poniedziałek w formacie ISO)
+- `DAY_OVERRIDES` — jednorazowe nadpisania dni (klucz: data ISO)
 
 ### Warianty tygodniowe
 

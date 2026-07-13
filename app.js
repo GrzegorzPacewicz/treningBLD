@@ -87,38 +87,23 @@ function setErrorTags(date, tags) {
   localStorage.setItem(key, JSON.stringify(tags));
 }
 
-function get4BLDCount(date) {
-  const dateKey = formatDateKey(date);
-  if (PLAN.ramp4BLD.dates2attempts.includes(dateKey)) return 2;
-  if (date >= PLAN.ramp4BLD.fullRampStart) return 4;
-  return 0;
-}
-
 function getWeekVariant(date) {
   const weekStart = getWeekStart(date);
   const weekKey = formatDateKey(weekStart);
   return PLAN.WEEK_SCHEDULE[weekKey] || "default";
 }
 
-function getTasksForDate(date) {
-  const dayOfWeek = date.getDay();
-  const dayName = DAY_MAP[dayOfWeek];
-  const variant = getWeekVariant(date);
-  const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
-  const dayTasks = variantTasks[dayName] || [];
+function expandDayTasks(dayTasks) {
   const tasks = [];
-  const count4bld = get4BLDCount(date);
-
   for (const taskDef of dayTasks) {
     if (taskDef.type === "4bld_ramp") {
-      if (count4bld > 0) {
-        for (let i = 1; i <= count4bld; i++) {
-          tasks.push({
-            id: `${taskDef.idPrefix}_${i}`,
-            text: `${taskDef.text} ${i}`,
-            detail: taskDef.detail || "",
-          });
-        }
+      const count = taskDef.count || 1;
+      for (let i = 1; i <= count; i++) {
+        tasks.push({
+          id: `${taskDef.idPrefix}_${i}`,
+          text: `${taskDef.text} ${i}`,
+          detail: taskDef.detail || "",
+        });
       }
     } else {
       const task = {
@@ -136,9 +121,24 @@ function getTasksForDate(date) {
       tasks.push(task);
     }
   }
-
   return tasks;
+}
 
+function getTasksForDate(date) {
+  const dateKey = formatDateKey(date);
+
+  // Check DAY_OVERRIDES first
+  if (PLAN.DAY_OVERRIDES && PLAN.DAY_OVERRIDES[dateKey]) {
+    return expandDayTasks(PLAN.DAY_OVERRIDES[dateKey]);
+  }
+
+  const dayOfWeek = date.getDay();
+  const dayName = DAY_MAP[dayOfWeek];
+  const variant = getWeekVariant(date);
+  const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
+  const dayTasks = variantTasks[dayName] || [];
+
+  return expandDayTasks(dayTasks);
 }
 
 function getTasksForDay(date) {
@@ -191,7 +191,12 @@ function calculateStreak() {
   return streak;
 }
 
+var _testTodayOverride = null;
+
 function getEffectiveToday() {
+  if (_testTodayOverride) {
+    return new Date(_testTodayOverride);
+  }
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -202,6 +207,10 @@ function getEffectiveToday() {
   } else {
     return new Date(END_DATE);
   }
+}
+
+function setTestToday(date) {
+  _testTodayOverride = date ? new Date(date) : null;
 }
 
 function getWeekOfProgram(date) {
@@ -324,8 +333,8 @@ function renderWeeklyPlan() {
 
     const taskTexts = tasks.map(t => {
       if (t.type === "4bld_ramp") {
-        const count = get4BLDCount(dayDate);
-        return count > 0 ? `${t.text} (×${count})` : null;
+        const count = t.count || 1;
+        return `${t.text} (×${count})`;
       }
       const detail = t.detail ? ` (${t.detail})` : "";
       return `${t.text}${detail}`;
@@ -692,13 +701,14 @@ if ("serviceWorker" in navigator) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     formatDateKey,
-    get4BLDCount,
+    expandDayTasks,
     getTasksForDay,
     getTasksForDate,
     getWeekVariant,
     isDayComplete,
     calculateStreak,
     getEffectiveToday,
+    setTestToday,
     getWeekOfProgram,
     getWeekStart,
   };

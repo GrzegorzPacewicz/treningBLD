@@ -17,20 +17,6 @@ var PLAN = {
     { discipline: "5BLD", target: "ułożenia ~20 min" },
   ],
 
-  // Progresja 4BLD
-  ramp4BLD: {
-    // 2–12 lipca: 2 próby/sesję
-    dates2attempts: [
-      "2026-07-02",
-      "2026-07-04",
-      "2026-07-05", // Czw, Sob, Nd
-      "2026-07-09",
-      "2026-07-11",
-      "2026-07-12", // Czw, Sob, Nd
-    ],
-    fullRampStart: new Date(2026, 6, 16), // od 16 lipca: 4 próby/sesję
-  },
-
   // Mapa tydzień→wariant (append-only, nigdy nie kasowana)
   // Klucz: poniedziałek danego tygodnia w formacie ISO "YYYY-MM-DD"
   // Wartość: nazwa wariantu z WEEK_VARIANTS
@@ -39,7 +25,7 @@ var PLAN = {
     // Lipiec 2026
     "2026-06-29": "default", // 29 cze – 5 lip: rozgrzewka, start programu
     "2026-07-06": "focus_3bld", // 6–12 lip: intensywny 3BLD
-    "2026-07-13": "focus_duze", // 13–19 lip: standardowy
+    "2026-07-13": "focus_duze", // 13–19 lip: nacisk na 4/5BLD
     "2026-07-20": "default", // 20–26 lip: budowanie 4/5BLD
     "2026-07-27": "focus_3bld", // 27 lip – 2 sie: standardowy
     // Sierpień 2026
@@ -73,7 +59,7 @@ var PLAN = {
         { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
       ],
       thursday: [
-        { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba" },
+        { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba", count: 4 },
         { id: "thu_5bld", text: "5BLD", detail: "1 próba" },
         { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
       ],
@@ -83,12 +69,12 @@ var PLAN = {
       saturday: [
         { id: "edges_sat", text: "Krawędzie", detail: "10" },
         { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
-        { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
+        { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba", count: 4 },
       ],
       sunday: [
         { id: "edges_sun", text: "Krawędzie", detail: "10" },
         { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
-        { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba" },
+        { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba", count: 4 },
         { id: "centers_review", text: "Centry (4/5BLD)", detail: "przegląd" },
       ],
     },
@@ -112,6 +98,7 @@ var PLAN = {
           idPrefix: "p4",
           text: "4BLD próba",
           detail: "podtrzymanie",
+          count: 1,
         },
       ],
       friday: [
@@ -136,11 +123,11 @@ var PLAN = {
       ],
       tuesday: [{ id: "speed_memo", text: "Speed-memo", detail: "10 min" }],
       wednesday: [
-        { type: "4bld_ramp", idPrefix: "wed_p4", text: "4BLD próba" },
-        { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
+        { id: "wed_5bld", text: "5BLD", detail: "1 próba" },
+        { id: "centers_wed", text: "Centry (4/5BLD)", detail: "ułożenia" },
       ],
       thursday: [
-        { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba" },
+        { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba", count: 2 },
         { id: "thu_5bld", text: "5BLD", detail: "1 próba" },
         { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
       ],
@@ -148,16 +135,29 @@ var PLAN = {
         { id: "rest", text: "Odpoczynek", detail: "pełny rest, bez kostki" },
       ],
       saturday: [
-        { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba" },
+        { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba", count: 4 },
         { id: "sat_5bld", text: "5BLD", detail: "1 próba" },
         { id: "solve3bld", text: "3BLD solvy", detail: "10 (podtrzymanie)" },
       ],
       sunday: [
-        { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba" },
+        { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba", count: 4 },
         { id: "centers_review", text: "Centry (4/5BLD)", detail: "przegląd" },
-        { id: "solve3bld", text: "3BLD solvy", detail: "10" },
+        { id: "solve3bld", text: "3BLD solvy", detail: "10 prób" },
       ],
     },
+  },
+
+  // Jednorazowe nadpisania dni (append-only, nie kasować starych wpisów)
+  // Klucz: konkretna data ISO "YYYY-MM-DD"
+  // Wartość: lista zadań zastępująca CAŁKOWICIE zadania z wariantu tego dnia
+  DAY_OVERRIDES: {
+    "2026-07-18": [
+      {
+        id: "rest",
+        text: "Odpoczynek",
+        detail: "zmiana jednorazowa — brak dostępności",
+      },
+    ],
   },
 
   // Na co położyć nacisk (zasady ogólne)

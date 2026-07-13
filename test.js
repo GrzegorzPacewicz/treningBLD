@@ -29,12 +29,13 @@ global.navigator = {};
 
 const {
   formatDateKey,
-  get4BLDCount,
+  expandDayTasks,
   getTasksForDay,
   getTasksForDate,
   getWeekVariant,
   isDayComplete,
   calculateStreak,
+  setTestToday,
   getWeekOfProgram,
   getWeekStart,
 } = require("./app.js");
@@ -65,25 +66,34 @@ test("formatDateKey: pads single digit month and day", () => {
   assert.strictEqual(formatDateKey(date), "2026-01-05");
 });
 
-// get4BLDCount tests
-test("get4BLDCount: returns 2 for dates in dates2attempts", () => {
-  const date = new Date(2026, 6, 2); // 2026-07-02
-  assert.strictEqual(get4BLDCount(date), 2);
+// expandDayTasks tests
+test("expandDayTasks: expands 4bld_ramp with count", () => {
+  const dayTasks = [
+    { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba", count: 2 },
+  ];
+  const tasks = expandDayTasks(dayTasks);
+  assert.strictEqual(tasks.length, 2);
+  assert.strictEqual(tasks[0].id, "p4_1");
+  assert.strictEqual(tasks[1].id, "p4_2");
 });
 
-test("get4BLDCount: returns 4 after fullRampStart", () => {
-  const date = new Date(2026, 6, 20); // 20 lipca 2026 (po 16 lipca)
-  assert.strictEqual(get4BLDCount(date), 4);
+test("expandDayTasks: defaults count to 1 when not specified", () => {
+  const dayTasks = [
+    { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba" },
+  ];
+  const tasks = expandDayTasks(dayTasks);
+  assert.strictEqual(tasks.length, 1);
+  assert.strictEqual(tasks[0].id, "p4_1");
 });
 
-test("get4BLDCount: returns 0 for early dates not in ramp", () => {
-  const date = new Date(2026, 6, 1); // 1 lipca 2026 (nie w dates2attempts, przed fullRampStart)
-  assert.strictEqual(get4BLDCount(date), 0);
-});
-
-test("get4BLDCount: returns 4 exactly on fullRampStart date", () => {
-  const date = new Date(2026, 6, 16); // 16 lipca 2026
-  assert.strictEqual(get4BLDCount(date), 4);
+test("expandDayTasks: passes through regular tasks", () => {
+  const dayTasks = [
+    { id: "solve3bld", text: "3BLD solvy", detail: "15 prób" },
+  ];
+  const tasks = expandDayTasks(dayTasks);
+  assert.strictEqual(tasks.length, 1);
+  assert.strictEqual(tasks[0].id, "solve3bld");
+  assert.strictEqual(tasks[0].detail, "15 prób");
 });
 
 // getTasksForDay tests
@@ -104,18 +114,20 @@ test("getTasksForDay: returns tuesday tasks (focus_3bld variant)", () => {
   assert.strictEqual(tasks[1].id, "solve3bld_extra");
 });
 
-test("getTasksForDay: expands 4bld_ramp to correct number of attempts", () => {
-  const thursday = new Date(2026, 6, 2); // 2 lipca 2026 (czwartek, 2 próby)
-  const tasks = getTasksForDay(thursday);
-  const p4Tasks = tasks.filter((t) => t.id.startsWith("p4_"));
-  assert.strictEqual(p4Tasks.length, 2);
-});
-
-test("getTasksForDay: expands 4bld_ramp to 4 attempts after fullRampStart", () => {
-  const thursday = new Date(2026, 6, 23); // 23 lipca 2026 (czwartek po 16 lipca)
+test("getTasksForDay: expands 4bld_ramp based on count in variant", () => {
+  // 2 lipca 2026 (czwartek) jest w tygodniu default - count: 4
+  const thursday = new Date(2026, 6, 2);
   const tasks = getTasksForDay(thursday);
   const p4Tasks = tasks.filter((t) => t.id.startsWith("p4_"));
   assert.strictEqual(p4Tasks.length, 4);
+});
+
+test("getTasksForDay: uses variant-specific 4bld count (focus_duze thursday = 2)", () => {
+  // 16 lipca 2026 (czwartek) w tygodniu focus_duze - count: 2
+  const thursday = new Date(2026, 6, 16);
+  const tasks = getTasksForDay(thursday);
+  const p4Tasks = tasks.filter((t) => t.id.startsWith("p4_"));
+  assert.strictEqual(p4Tasks.length, 2);
 });
 
 // isDayComplete tests
@@ -129,11 +141,10 @@ test("isDayComplete: returns full=false, partial=false for empty day", () => {
 
 test("isDayComplete: returns full=true when all tasks done", () => {
   localStorage.clear();
+  // 6 lipca 2026 (poniedziałek) w focus_3bld - ma tylko solve3bld
   const monday = new Date(2026, 6, 6);
   localStorage.setItem("day:2026-07-06", JSON.stringify({
-    corners_warmup_mon: true,
-    solve3bld: true,
-    mon_5bld: true
+    solve3bld: true
   }));
   const status = isDayComplete(monday);
   assert.strictEqual(status.full, true);
@@ -156,19 +167,19 @@ test("isDayComplete: returns partial=true when some tasks done", () => {
 // calculateStreak tests
 test("calculateStreak: includes today when completed", () => {
   localStorage.clear();
-  // Nowy plan z wariantami:
+  setTestToday(new Date(2026, 6, 5)); // Mock: "dziś" to 5 lipca
+  // Tydzień default (29 cze - 5 lip):
   // 1 lipca (środa): corners_warmup_wed + solve3bld
-  // 2 lipca (czwartek): p4_1, p4_2 (2 próby 4BLD) + thu_5bld + centers
+  // 2 lipca (czwartek): p4_1..p4_4 (4 próby) + thu_5bld + centers
   // 3 lipca (piątek): rest (odpoczynek)
-  // 4 lipca (sobota): edges_sat + solve3bld + sat_p4_1 + sat_p4_2 (sobota, 2 próby 4BLD)
-  // 5 lipca (niedziela): edges_sun + solve3bld + sun_p4_1 + sun_p4_2 + centers_review
+  // 4 lipca (sobota): edges_sat + solve3bld + sat_p4_1..sat_p4_4
+  // 5 lipca (niedziela): edges_sun + solve3bld + sun_p4_1..sun_p4_4 + centers_review
   localStorage.setItem("day:2026-07-01", JSON.stringify({
     corners_warmup_wed: true,
     solve3bld: true
   }));
   localStorage.setItem("day:2026-07-02", JSON.stringify({
-    p4_1: true,
-    p4_2: true,
+    p4_1: true, p4_2: true, p4_3: true, p4_4: true,
     thu_5bld: true,
     centers: true
   }));
@@ -176,34 +187,30 @@ test("calculateStreak: includes today when completed", () => {
   localStorage.setItem("day:2026-07-04", JSON.stringify({
     edges_sat: true,
     solve3bld: true,
-    sat_p4_1: true,
-    sat_p4_2: true
+    sat_p4_1: true, sat_p4_2: true, sat_p4_3: true, sat_p4_4: true
   }));
   localStorage.setItem("day:2026-07-05", JSON.stringify({
     edges_sun: true,
     solve3bld: true,
-    sun_p4_1: true,
-    sun_p4_2: true,
+    sun_p4_1: true, sun_p4_2: true, sun_p4_3: true, sun_p4_4: true,
     centers_review: true
   }));
 
   // Streak powinien być 5 (1-5 lipca)
   const streak = calculateStreak();
   assert.strictEqual(streak, 5);
+  setTestToday(null); // Reset mock
 });
 
 test("calculateStreak: returns 0 when today not completed", () => {
   localStorage.clear();
-  // 3 lipca nie ukończony, ale 1-2 lipca tak
-  localStorage.setItem("day:2026-07-01", JSON.stringify({ solve3bld: true }));
-  localStorage.setItem(
-    "day:2026-07-02",
-    JSON.stringify({ p4_1: true, p4_2: true, centers: true })
-  );
+  setTestToday(new Date(2026, 6, 3)); // Mock: "dziś" to 3 lipca (piątek)
+  // 3 lipca (piątek): rest — nieukończony
   // day:2026-07-03 brak = nieukończony
 
   const streak = calculateStreak();
   assert.strictEqual(streak, 0);
+  setTestToday(null);
 });
 
 // getWeekOfProgram tests
@@ -246,29 +253,47 @@ test("getWeekVariant: returns 'default' when no entry in WEEK_SCHEDULE", () => {
 });
 
 test("getWeekVariant: returns scheduled variant from WEEK_SCHEDULE", () => {
+  const originalValue = PLAN.WEEK_SCHEDULE["2026-07-13"];
   PLAN.WEEK_SCHEDULE["2026-07-13"] = "focus_3bld";
   const wednesday = new Date(2026, 6, 15); // 15 lipca (środa w tygodniu 13-19 lipca)
   assert.strictEqual(getWeekVariant(wednesday), "focus_3bld");
-  delete PLAN.WEEK_SCHEDULE["2026-07-13"];
+  PLAN.WEEK_SCHEDULE["2026-07-13"] = originalValue;
 });
 
 test("getTasksForDate: uses focus_3bld variant tasks", () => {
+  const originalValue = PLAN.WEEK_SCHEDULE["2026-07-13"];
   PLAN.WEEK_SCHEDULE["2026-07-13"] = "focus_3bld";
   const monday = new Date(2026, 6, 13); // 13 lipca (poniedziałek)
   const tasks = getTasksForDate(monday);
   assert.strictEqual(tasks.length, 1);
   assert.strictEqual(tasks[0].id, "solve3bld");
   assert.strictEqual(tasks[0].detail, "20–25 prób");
-  delete PLAN.WEEK_SCHEDULE["2026-07-13"];
+  PLAN.WEEK_SCHEDULE["2026-07-13"] = originalValue;
 });
 
 test("getTasksForDate: uses focus_duze variant tasks", () => {
-  PLAN.WEEK_SCHEDULE["2026-07-20"] = "focus_duze";
-  const wednesday = new Date(2026, 6, 22); // 22 lipca (środa)
+  const wednesday = new Date(2026, 6, 15); // 15 lipca (środa) - tydzień focus_duze
   const tasks = getTasksForDate(wednesday);
-  const taskIds = tasks.map(t => t.id).filter(Boolean);
-  assert.ok(taskIds.includes("centers"));
-  delete PLAN.WEEK_SCHEDULE["2026-07-20"];
+  const taskIds = tasks.map(t => t.id);
+  assert.ok(taskIds.includes("wed_5bld"));
+  assert.ok(taskIds.includes("centers_wed"));
+});
+
+test("getTasksForDate: DAY_OVERRIDES takes precedence over variant", () => {
+  // 18 lipca 2026 (sobota) ma override na odpoczynek
+  const saturday = new Date(2026, 6, 18);
+  const tasks = getTasksForDate(saturday);
+  assert.strictEqual(tasks.length, 1);
+  assert.strictEqual(tasks[0].id, "rest");
+  assert.ok(tasks[0].detail.includes("jednorazowa"));
+});
+
+test("getTasksForDate: returns normal tasks when no override", () => {
+  // 19 lipca 2026 (niedziela) - brak override, normalne zadania z focus_duze
+  const sunday = new Date(2026, 6, 19);
+  const tasks = getTasksForDate(sunday);
+  const taskIds = tasks.map(t => t.id);
+  assert.ok(taskIds.includes("centers_review"));
 });
 
 // Summary

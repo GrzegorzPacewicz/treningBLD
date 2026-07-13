@@ -22,10 +22,10 @@ https://treningbld.grzegorzpacewicz.pl (do skonfigurowania)
 ## Jak zmienić plan treningowy
 Edytuj `plan.js`:
 - `startDate` / `endDate` — okres programu
-- `ramp4BLD` — progresja 4BLD (daty z 2 próbami, start pełnej rampy)
 - `focus` — sekcja "Na co położyć nacisk"
-- `WEEK_VARIANTS` — szablony wariantów tygodniowych
+- `WEEK_VARIANTS` — szablony wariantów tygodniowych (każde zadanie 4BLD ma pole `count`)
 - `WEEK_SCHEDULE` — mapa tydzień→wariant (klucz: poniedziałek ISO)
+- `DAY_OVERRIDES` — jednorazowe nadpisania dni (klucz: data ISO)
 
 Po edycji odśwież stronę.
 
