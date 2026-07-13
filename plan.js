@@ -151,11 +151,17 @@ var PLAN = {
   // Klucz: konkretna data ISO "YYYY-MM-DD"
   // Wartość: lista zadań zastępująca CAŁKOWICIE zadania z wariantu tego dnia
   DAY_OVERRIDES: {
+    // Tydzień 13–19 lip: zamiana piątku z sobotą
+    "2026-07-17": [
+      { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba", count: 4 },
+      { id: "sat_5bld", text: "5BLD", detail: "1 próba" },
+      { id: "solve3bld", text: "3BLD solvy", detail: "10 (podtrzymanie)" },
+    ],
     "2026-07-18": [
       {
         id: "rest",
         text: "Odpoczynek",
-        detail: "zmiana jednorazowa — brak dostępności",
+        detail: "zamiana z piątkiem",
       },
     ],
   },
