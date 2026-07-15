@@ -164,6 +164,13 @@ var PLAN = {
         detail: "zamiana z piątkiem",
       },
     ],
+    "2026-07-15": [
+      {
+        id: "rest",
+        text: "Odpoczynek",
+        detail: "dodatkowy rest",
+      },
+    ],
   },
 
   // Na co położyć nacisk (zasady ogólne)
