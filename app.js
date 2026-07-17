@@ -62,14 +62,24 @@ function getStorageKey(date) {
 }
 
 function getDayData(date) {
+  const dateKey = formatDateKey(date);
+  if (typeof pbGetProgress === "function") {
+    return pbGetProgress(dateKey).tasks;
+  }
   const key = getStorageKey(date);
   const data = localStorage.getItem(key);
   return data ? JSON.parse(data) : {};
 }
 
 function setDayData(date, data) {
+  const dateKey = formatDateKey(date);
   const key = getStorageKey(date);
   localStorage.setItem(key, JSON.stringify(data));
+
+  if (typeof pbSaveProgress === "function") {
+    const tags = getErrorTags(date);
+    pbSaveProgress(dateKey, data, tags);
+  }
 }
 
 function getErrorTagsKey(date) {
@@ -77,14 +87,24 @@ function getErrorTagsKey(date) {
 }
 
 function getErrorTags(date) {
+  const dateKey = formatDateKey(date);
+  if (typeof pbGetProgress === "function") {
+    return pbGetProgress(dateKey).tags;
+  }
   const key = getErrorTagsKey(date);
   const data = localStorage.getItem(key);
   return data ? JSON.parse(data) : {};
 }
 
 function setErrorTags(date, tags) {
+  const dateKey = formatDateKey(date);
   const key = getErrorTagsKey(date);
   localStorage.setItem(key, JSON.stringify(tags));
+
+  if (typeof pbSaveProgress === "function") {
+    const tasks = getDayData(date);
+    pbSaveProgress(dateKey, tasks, tags);
+  }
 }
 
 function getWeekVariant(date) {
@@ -124,21 +144,32 @@ function expandDayTasks(dayTasks) {
   return tasks;
 }
 
-function getTasksForDate(date) {
-  const dateKey = formatDateKey(date);
-
-  // Check DAY_OVERRIDES first
-  if (PLAN.DAY_OVERRIDES && PLAN.DAY_OVERRIDES[dateKey]) {
-    return expandDayTasks(PLAN.DAY_OVERRIDES[dateKey]);
-  }
-
+function getBaseTasks(date) {
   const dayOfWeek = date.getDay();
   const dayName = DAY_MAP[dayOfWeek];
   const variant = getWeekVariant(date);
   const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
-  const dayTasks = variantTasks[dayName] || [];
+  return variantTasks[dayName] || [];
+}
 
-  return expandDayTasks(dayTasks);
+function getTasksForDate(date) {
+  const dateKey = formatDateKey(date);
+
+  // Check PocketBase overrides first
+  const pbOverride = typeof pbGetOverride === "function" ? pbGetOverride(dateKey) : null;
+  if (pbOverride && pbOverride.new_tasks) {
+    if (pbOverride.new_tasks === "rest") {
+      return [{ id: "rest", text: "Odpoczynek", detail: pbOverride.reason || "override" }];
+    }
+    return expandDayTasks(pbOverride.new_tasks);
+  }
+
+  // Then check local DAY_OVERRIDES
+  if (PLAN.DAY_OVERRIDES && PLAN.DAY_OVERRIDES[dateKey]) {
+    return expandDayTasks(PLAN.DAY_OVERRIDES[dateKey]);
+  }
+
+  return expandDayTasks(getBaseTasks(date));
 }
 
 function getTasksForDay(date) {
@@ -490,9 +521,19 @@ function renderTodayCard() {
   const today = getEffectiveToday();
   const dayName = DAY_NAMES_FULL[today.getDay()];
   const dateStr = `${today.getDate()} ${MONTH_NAMES[today.getMonth()]}`;
+  const dateKey = formatDateKey(today);
+  const hasOverride = typeof pbGetOverride === "function" && pbGetOverride(dateKey);
 
-  document.getElementById("today-date").textContent =
-    `${dayName}, ${dateStr}`;
+  const headerEl = document.querySelector("#today-card .card-header");
+  headerEl.innerHTML = `
+    <div>
+      <h2>Dzisiaj ${hasOverride ? '<span class="override-badge">zmieniony</span>' : ''}</h2>
+      <span class="date mono" id="today-date">${dayName}, ${dateStr}</span>
+    </div>
+    <button class="edit-btn" onclick="openEditModal(getEffectiveToday())" title="Edytuj plan">
+      <i class="ti ti-edit"></i>
+    </button>
+  `;
 
   const tasks = getTasksForDay(today);
   const data = getDayData(today);
@@ -639,9 +680,19 @@ function openDayModal(date) {
   const modal = document.getElementById("modal");
   const dayName = DAY_NAMES_FULL[date.getDay()];
   const dateStr = `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
+  const dateKey = formatDateKey(date);
+  const hasOverride = typeof pbGetOverride === "function" && pbGetOverride(dateKey);
 
-  document.getElementById("modal-title").textContent =
-    `${dayName}, ${dateStr}`;
+  const header = document.querySelector("#modal .modal-header");
+  header.innerHTML = `
+    <h3 id="modal-title">${dayName}, ${dateStr} ${hasOverride ? '<span class="override-badge">zmieniony</span>' : ''}</h3>
+    <div class="modal-actions">
+      <button class="edit-btn" onclick="closeModal(); openEditModal(new Date('${dateKey}'))" title="Edytuj plan">
+        <i class="ti ti-edit"></i>
+      </button>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+  `;
 
   const tasks = getTasksForDay(date);
   const data = getDayData(date);
@@ -662,6 +713,131 @@ function closeModal(event) {
   document.body.style.overflow = "";
 }
 
+let _editTasks = [];
+
+function openEditModal(date) {
+  const dateKey = formatDateKey(date);
+  const dayName = DAY_NAMES_FULL[date.getDay()];
+  const dateStr = `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
+  const baseTasks = getBaseTasks(date);
+  const pbOverride = typeof pbGetOverride === "function" ? pbGetOverride(dateKey) : null;
+
+  const modal = document.getElementById("edit-modal");
+  document.getElementById("edit-modal-title").textContent = `Edytuj: ${dayName}, ${dateStr}`;
+  document.getElementById("edit-date").value = dateKey;
+
+  const currentTasksEl = document.getElementById("edit-current-tasks");
+  currentTasksEl.innerHTML = baseTasks.map(t => {
+    if (t.type === "4bld_ramp") return `${t.text} (×${t.count || 1})`;
+    return `${t.text}${t.detail ? ` (${t.detail})` : ""}`;
+  }).join("<br>") || "<em>Brak zadań</em>";
+
+  document.getElementById("edit-action").value = pbOverride ? pbOverride.action : "custom";
+  document.getElementById("edit-reason").value = pbOverride ? (pbOverride.reason || "") : "";
+
+  if (pbOverride && pbOverride.new_tasks && pbOverride.new_tasks !== "rest") {
+    _editTasks = JSON.parse(JSON.stringify(pbOverride.new_tasks));
+  } else {
+    _editTasks = expandDayTasks(baseTasks).map(t => ({ id: t.id, text: t.text, detail: t.detail || "" }));
+  }
+  renderEditTasksList();
+
+  updateEditFormVisibility();
+  modal.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function updateEditFormVisibility() {
+  const action = document.getElementById("edit-action").value;
+  const tasksGroup = document.getElementById("edit-tasks-group");
+  tasksGroup.style.display = action === "rest" ? "none" : "block";
+}
+
+function renderEditTasksList() {
+  const container = document.getElementById("edit-tasks-list");
+  container.innerHTML = "";
+
+  _editTasks.forEach((task, index) => {
+    const row = document.createElement("div");
+    row.className = "edit-task-row";
+    row.innerHTML = `
+      <input type="text" class="edit-task-text" value="${task.text || ""}"
+             placeholder="Nazwa zadania" onchange="updateEditTask(${index}, 'text', this.value)">
+      <input type="text" class="edit-task-detail" value="${task.detail || ""}"
+             placeholder="Szczegóły" onchange="updateEditTask(${index}, 'detail', this.value)">
+      <button type="button" class="btn-icon btn-remove" onclick="removeEditTask(${index})" title="Usuń">
+        <i class="ti ti-trash"></i>
+      </button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function updateEditTask(index, field, value) {
+  _editTasks[index][field] = value;
+  if (field === "text") {
+    _editTasks[index].id = value.toLowerCase().replace(/\s+/g, "_") + "_" + index;
+  }
+}
+
+function addEditTask() {
+  _editTasks.push({ id: "new_" + Date.now(), text: "", detail: "" });
+  renderEditTasksList();
+  const inputs = document.querySelectorAll(".edit-task-text");
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function removeEditTask(index) {
+  _editTasks.splice(index, 1);
+  renderEditTasksList();
+}
+
+function closeEditModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById("edit-modal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+async function saveEditModal() {
+  const dateKey = document.getElementById("edit-date").value;
+  const action = document.getElementById("edit-action").value;
+  const reason = document.getElementById("edit-reason").value;
+  const date = new Date(dateKey + "T00:00:00");
+  const originalTasks = getBaseTasks(date);
+
+  let newTasks;
+  if (action === "rest") {
+    newTasks = "rest";
+  } else {
+    newTasks = _editTasks.filter(t => t.text.trim());
+    if (newTasks.length === 0) {
+      alert("Dodaj przynajmniej jedno zadanie");
+      return;
+    }
+  }
+
+  try {
+    await pbSaveOverride(dateKey, newTasks, reason, originalTasks);
+    closeEditModal();
+    renderAll();
+  } catch (e) {
+    alert("Błąd zapisu: " + e.message);
+  }
+}
+
+async function deleteEditOverride() {
+  const dateKey = document.getElementById("edit-date").value;
+  if (!confirm("Usunąć override i przywrócić domyślny plan?")) return;
+
+  try {
+    await pbDeleteOverride(dateKey);
+    closeEditModal();
+    renderAll();
+  } catch (e) {
+    alert("Błąd usuwania: " + e.message);
+  }
+}
+
 function renderAll() {
   renderStatsBar();
   renderProgressBar();
@@ -673,13 +849,15 @@ function renderAll() {
 }
 
 // Initialize
-document.addEventListener("DOMContentLoaded", () => {
-  // Start with weekly plan collapsed
+document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("weekly-plan-card").classList.add("collapsed");
+
+  if (typeof pbFetchOverrides === "function") {
+    await Promise.all([pbFetchOverrides(), pbFetchProgress()]);
+  }
 
   renderAll();
 
-  // Auto-scroll to today card
   setTimeout(() => {
     document
       .getElementById("today-card")
