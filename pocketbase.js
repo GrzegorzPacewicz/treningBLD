@@ -2,6 +2,48 @@ const PB_URL = "https://gp1.pecet.it";
 const COLLECTION = "training_overrides";
 
 let _pbOverrides = null;
+let _pbAuthToken = localStorage.getItem("pb_auth_token") || null;
+let _pbAuthModel = JSON.parse(localStorage.getItem("pb_auth_model") || "null");
+
+function pbIsLoggedIn() {
+  return !!_pbAuthToken;
+}
+
+function pbGetUser() {
+  return _pbAuthModel;
+}
+
+async function pbLogin(email, password) {
+  const res = await fetch(`${PB_URL}/api/collections/users/auth-with-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identity: email, password })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Błąd logowania");
+  }
+
+  const data = await res.json();
+  _pbAuthToken = data.token;
+  _pbAuthModel = data.record;
+  localStorage.setItem("pb_auth_token", data.token);
+  localStorage.setItem("pb_auth_model", JSON.stringify(data.record));
+  return data.record;
+}
+
+function pbLogout() {
+  _pbAuthToken = null;
+  _pbAuthModel = null;
+  localStorage.removeItem("pb_auth_token");
+  localStorage.removeItem("pb_auth_model");
+}
+
+function pbAuthHeaders() {
+  if (!_pbAuthToken) return {};
+  return { "Authorization": _pbAuthToken };
+}
 
 async function pbFetchOverrides() {
   try {
@@ -32,6 +74,10 @@ function pbGetOverride(dateKey) {
 }
 
 async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
+  if (!_pbAuthToken) {
+    throw new Error("Musisz być zalogowany, żeby edytować plan");
+  }
+
   const body = {
     date: dateKey,
     action: tasks === "rest" ? "rest" : "custom",
@@ -42,7 +88,7 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
 
   const res = await fetch(`${PB_URL}/api/collections/${COLLECTION}/records`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
     body: JSON.stringify(body)
   });
 
@@ -57,12 +103,16 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
 }
 
 async function pbDeleteOverride(dateKey) {
+  if (!_pbAuthToken) {
+    throw new Error("Musisz być zalogowany, żeby usuwać override");
+  }
+
   const record = _pbOverrides[dateKey];
   if (!record) return;
 
   const res = await fetch(
     `${PB_URL}/api/collections/${COLLECTION}/records/${record.id}`,
-    { method: "DELETE" }
+    { method: "DELETE", headers: pbAuthHeaders() }
   );
 
   if (!res.ok) {
@@ -104,6 +154,11 @@ function pbGetProgress(dateKey) {
 }
 
 async function pbSaveProgress(dateKey, tasks, tags) {
+  if (!_pbAuthToken) {
+    console.warn("Not logged in, skipping PocketBase save");
+    return;
+  }
+
   const body = { date: dateKey, tasks, tags };
   const existingId = _pbProgressIds[dateKey];
 
@@ -113,7 +168,7 @@ async function pbSaveProgress(dateKey, tasks, tags) {
 
   const res = await fetch(url, {
     method: existingId ? "PATCH" : "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
     body: JSON.stringify(body)
   });
 

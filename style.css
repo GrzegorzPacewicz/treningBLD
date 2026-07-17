@@ -961,3 +961,60 @@ body {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* Auth button */
+.auth-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  margin-left: auto;
+}
+
+.auth-btn:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.auth-btn.logged-in {
+  color: white;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+/* Login Modal */
+.login-modal-content {
+  max-width: 360px;
+}
+
+.login-modal-content .modal-header {
+  justify-content: center;
+}
+
+.login-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 12px;
+  min-height: 18px;
+}
+
+.form-group input[type="email"],
+.form-group input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--bg);
+}
+
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}

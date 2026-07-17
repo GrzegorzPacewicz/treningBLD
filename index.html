@@ -39,6 +39,9 @@
         <span class="stat-label">streak</span>
       </div>
       <div class="week-progress" id="week-progress"></div>
+      <button class="auth-btn" id="auth-btn" onclick="toggleAuth()">
+        <i class="ti ti-user"></i>
+      </button>
     </div>
 
     <!-- Progress Bar -->
@@ -145,6 +148,31 @@
             <button class="btn btn-danger" onclick="deleteEditOverride()">Usuń override</button>
             <button class="btn btn-primary" onclick="saveEditModal()">Zapisz</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+      <div class="modal-content login-modal-content">
+        <div class="modal-header">
+          <h3>Zaloguj się</h3>
+        </div>
+        <div class="modal-body">
+          <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+              <label for="login-email">Email:</label>
+              <input type="email" id="login-email" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="login-password">Hasło:</label>
+              <input type="password" id="login-password" required autocomplete="current-password">
+            </div>
+            <div id="login-error" class="login-error"></div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Zaloguj</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

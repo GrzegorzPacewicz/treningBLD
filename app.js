@@ -852,6 +852,8 @@ function renderAll() {
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("weekly-plan-card").classList.add("collapsed");
 
+  updateAuthButton();
+
   if (typeof pbFetchOverrides === "function") {
     await Promise.all([pbFetchOverrides(), pbFetchProgress()]);
   }
@@ -873,6 +875,56 @@ document.addEventListener("keydown", (e) => {
 // Register service worker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
+}
+
+// Auth functions
+function showLoginModal() {
+  document.getElementById("login-modal").classList.add("open");
+  document.getElementById("login-email").focus();
+}
+
+function hideLoginModal() {
+  document.getElementById("login-modal").classList.remove("open");
+  document.getElementById("login-error").textContent = "";
+  document.getElementById("login-form").reset();
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
+  const errorEl = document.getElementById("login-error");
+
+  try {
+    await pbLogin(email, password);
+    hideLoginModal();
+    updateAuthButton();
+    renderAll();
+  } catch (e) {
+    errorEl.textContent = e.message;
+  }
+}
+
+function toggleAuth() {
+  if (pbIsLoggedIn()) {
+    if (confirm("Wylogować?")) {
+      pbLogout();
+      updateAuthButton();
+    }
+  } else {
+    showLoginModal();
+  }
+}
+
+function updateAuthButton() {
+  const btn = document.getElementById("auth-btn");
+  if (pbIsLoggedIn()) {
+    btn.classList.add("logged-in");
+    btn.title = "Zalogowany: " + (pbGetUser()?.email || "");
+  } else {
+    btn.classList.remove("logged-in");
+    btn.title = "Zaloguj się";
+  }
 }
 
 // Export for Node.js tests
