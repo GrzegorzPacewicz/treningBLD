@@ -141,7 +141,6 @@ var PLAN = {
       ],
       sunday: [
         { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba", count: 4 },
-        { id: "centers_review", text: "Centry (4/5BLD)", detail: "przegląd" },
         { id: "solve3bld", text: "3BLD solvy", detail: "10 prób" },
       ],
     },
