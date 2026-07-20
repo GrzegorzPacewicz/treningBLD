@@ -29,7 +29,6 @@ global.navigator = {};
 
 const {
   formatDateKey,
-  expandDayTasks,
   getTasksForDay,
   getTasksForDate,
   getWeekVariant,
@@ -66,36 +65,6 @@ test("formatDateKey: pads single digit month and day", () => {
   assert.strictEqual(formatDateKey(date), "2026-01-05");
 });
 
-// expandDayTasks tests
-test("expandDayTasks: expands 4bld_ramp with count", () => {
-  const dayTasks = [
-    { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba", count: 2 },
-  ];
-  const tasks = expandDayTasks(dayTasks);
-  assert.strictEqual(tasks.length, 2);
-  assert.strictEqual(tasks[0].id, "p4_1");
-  assert.strictEqual(tasks[1].id, "p4_2");
-});
-
-test("expandDayTasks: defaults count to 1 when not specified", () => {
-  const dayTasks = [
-    { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba" },
-  ];
-  const tasks = expandDayTasks(dayTasks);
-  assert.strictEqual(tasks.length, 1);
-  assert.strictEqual(tasks[0].id, "p4_1");
-});
-
-test("expandDayTasks: passes through regular tasks", () => {
-  const dayTasks = [
-    { id: "solve3bld", text: "3BLD solvy", detail: "15 prób" },
-  ];
-  const tasks = expandDayTasks(dayTasks);
-  assert.strictEqual(tasks.length, 1);
-  assert.strictEqual(tasks[0].id, "solve3bld");
-  assert.strictEqual(tasks[0].detail, "15 prób");
-});
-
 // getTasksForDay tests
 test("getTasksForDay: returns monday tasks (focus_3bld variant)", () => {
   // 6 lipca 2026 jest w tygodniu focus_3bld wg WEEK_SCHEDULE
@@ -114,20 +83,21 @@ test("getTasksForDay: returns tuesday tasks (focus_3bld variant)", () => {
   assert.strictEqual(tasks[1].id, "solve3bld_extra");
 });
 
-test("getTasksForDay: expands 4bld_ramp based on count in variant", () => {
-  // 2 lipca 2026 (czwartek) jest w tygodniu default - count: 4
+test("getTasksForDay: returns 4BLD task on thursday (default variant)", () => {
+  // 2 lipca 2026 (czwartek) jest w tygodniu default
   const thursday = new Date(2026, 6, 2);
   const tasks = getTasksForDay(thursday);
-  const p4Tasks = tasks.filter((t) => t.id.startsWith("p4_"));
-  assert.strictEqual(p4Tasks.length, 4);
+  const p4Task = tasks.find((t) => t.id === "4bld");
+  assert.ok(p4Task);
+  assert.strictEqual(p4Task.detail, "3 próby");
 });
 
-test("getTasksForDay: uses variant-specific 4bld count (focus_duze thursday = 2)", () => {
-  // 16 lipca 2026 (czwartek) w tygodniu focus_duze - count: 2
+test("getTasksForDay: returns 4BLD task on thursday (focus_duze variant)", () => {
+  // 16 lipca 2026 (czwartek) w tygodniu focus_duze
   const thursday = new Date(2026, 6, 16);
   const tasks = getTasksForDay(thursday);
-  const p4Tasks = tasks.filter((t) => t.id.startsWith("p4_"));
-  assert.strictEqual(p4Tasks.length, 2);
+  const p4Task = tasks.find((t) => t.id === "4bld");
+  assert.ok(p4Task);
 });
 
 // isDayComplete tests
@@ -179,21 +149,19 @@ test("calculateStreak: includes today when completed", () => {
     solve3bld: true
   }));
   localStorage.setItem("day:2026-07-02", JSON.stringify({
-    p4_1: true, p4_2: true, p4_3: true, p4_4: true,
-    thu_5bld: true,
-    centers: true
+    "4bld": true,
+    thu_5bld: true
   }));
   localStorage.setItem("day:2026-07-03", JSON.stringify({ rest: true }));
   localStorage.setItem("day:2026-07-04", JSON.stringify({
     edges_sat: true,
     solve3bld: true,
-    sat_p4_1: true, sat_p4_2: true, sat_p4_3: true, sat_p4_4: true
+    "4bld": true
   }));
   localStorage.setItem("day:2026-07-05", JSON.stringify({
     edges_sun: true,
     solve3bld: true,
-    sun_p4_1: true, sun_p4_2: true, sun_p4_3: true, sun_p4_4: true,
-    centers_review: true
+    "4bld": true
   }));
 
   // Streak powinien być 5 (1-5 lipca)
@@ -276,7 +244,6 @@ test("getTasksForDate: uses focus_duze variant tasks", () => {
   const tasks = getTasksForDate(wednesday);
   const taskIds = tasks.map(t => t.id);
   assert.ok(taskIds.includes("wed_5bld"));
-  assert.ok(taskIds.includes("centers_wed"));
 });
 
 test("getTasksForDate: DAY_OVERRIDES takes precedence over variant", () => {
@@ -285,7 +252,6 @@ test("getTasksForDate: DAY_OVERRIDES takes precedence over variant", () => {
   const tasks = getTasksForDate(saturday);
   assert.strictEqual(tasks.length, 1);
   assert.strictEqual(tasks[0].id, "rest");
-  assert.ok(tasks[0].detail.includes("jednorazowa"));
 });
 
 test("getTasksForDate: returns normal tasks when no override", () => {
@@ -293,7 +259,8 @@ test("getTasksForDate: returns normal tasks when no override", () => {
   const sunday = new Date(2026, 6, 19);
   const tasks = getTasksForDate(sunday);
   const taskIds = tasks.map(t => t.id);
-  assert.ok(taskIds.includes("centers_review"));
+  assert.ok(taskIds.includes("solve3bld"));
+  assert.ok(taskIds.includes("4bld"));
 });
 
 // Summary

@@ -51,7 +51,7 @@ var PLAN = {
         {
           id: "speed_memo",
           text: "Speed-memo",
-          detail: "10 min, limity 60s→45s→20s",
+          detail: "10 min, limity 30s→25s→20s",
         },
       ],
       wednesday: [
@@ -59,9 +59,8 @@ var PLAN = {
         { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
       ],
       thursday: [
-        { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba", count: 4 },
+        { id: "4bld", text: "4BLD", detail: "3 próby" },
         { id: "thu_5bld", text: "5BLD", detail: "1 próba" },
-        { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
       ],
       friday: [
         { id: "rest", text: "Odpoczynek", detail: "pełny rest, bez kostki" },
@@ -69,13 +68,12 @@ var PLAN = {
       saturday: [
         { id: "edges_sat", text: "Krawędzie", detail: "10" },
         { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
-        { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba", count: 4 },
+        { id: "4bld", text: "4BLD", detail: "3 próby" },
       ],
       sunday: [
         { id: "edges_sun", text: "Krawędzie", detail: "10" },
         { id: "solve3bld", text: "3BLD solvy", detail: "15–20 prób" },
-        { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba", count: 4 },
-        { id: "centers_review", text: "Centry (4/5BLD)", detail: "przegląd" },
+        { id: "4bld", text: "4BLD", detail: "3 próby" },
       ],
     },
 
@@ -93,13 +91,7 @@ var PLAN = {
         { id: "solve3bld", text: "3BLD solvy", detail: "20–25 prób" },
       ],
       thursday: [
-        {
-          type: "4bld_ramp",
-          idPrefix: "p4",
-          text: "4BLD próba",
-          detail: "podtrzymanie",
-          count: 1,
-        },
+        { id: "p4_1", text: "4BLD próba", detail: "podtrzymanie" },
       ],
       friday: [
         { id: "rest", text: "Odpoczynek", detail: "pełny rest, bez kostki" },
@@ -124,23 +116,21 @@ var PLAN = {
       tuesday: [{ id: "speed_memo", text: "Speed-memo", detail: "10 min" }],
       wednesday: [
         { id: "wed_5bld", text: "5BLD", detail: "1 próba" },
-        { id: "centers_wed", text: "Centry (4/5BLD)", detail: "ułożenia" },
       ],
       thursday: [
-        { type: "4bld_ramp", idPrefix: "p4", text: "4BLD próba", count: 2 },
+        { id: "4bld", text: "4BLD", detail: "3 próby" },
         { id: "thu_5bld", text: "5BLD", detail: "1 próba" },
-        { id: "centers", text: "Centry (4/5BLD)", detail: "ułożenia" },
       ],
       friday: [
         { id: "rest", text: "Odpoczynek", detail: "pełny rest, bez kostki" },
       ],
       saturday: [
-        { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba", count: 4 },
+        { id: "4bld", text: "4BLD", detail: "3 próby" },
         { id: "sat_5bld", text: "5BLD", detail: "1 próba" },
         { id: "solve3bld", text: "3BLD solvy", detail: "10 (podtrzymanie)" },
       ],
       sunday: [
-        { type: "4bld_ramp", idPrefix: "sun_p4", text: "4BLD próba", count: 4 },
+        { id: "4bld", text: "4BLD", detail: "3 próby" },
         { id: "solve3bld", text: "3BLD solvy", detail: "10 prób" },
       ],
     },
@@ -152,7 +142,7 @@ var PLAN = {
   DAY_OVERRIDES: {
     // Tydzień 13–19 lip: zamiana piątku z sobotą
     "2026-07-17": [
-      { type: "4bld_ramp", idPrefix: "sat_p4", text: "4BLD próba", count: 4 },
+      { id: "4bld", text: "4BLD", detail: "3 próby" },
       { id: "sat_5bld", text: "5BLD", detail: "1 próba" },
       { id: "solve3bld", text: "3BLD solvy", detail: "10 (podtrzymanie)" },
     ],

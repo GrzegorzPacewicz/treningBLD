@@ -113,36 +113,6 @@ function getWeekVariant(date) {
   return PLAN.WEEK_SCHEDULE[weekKey] || "default";
 }
 
-function expandDayTasks(dayTasks) {
-  const tasks = [];
-  for (const taskDef of dayTasks) {
-    if (taskDef.type === "4bld_ramp") {
-      const count = taskDef.count || 1;
-      for (let i = 1; i <= count; i++) {
-        tasks.push({
-          id: `${taskDef.idPrefix}_${i}`,
-          text: `${taskDef.text} ${i}`,
-          detail: taskDef.detail || "",
-        });
-      }
-    } else {
-      const task = {
-        id: taskDef.id,
-        text: taskDef.text,
-        detail: taskDef.detail || "",
-      };
-      if (taskDef.or) {
-        task.or = {
-          id: taskDef.or.id,
-          text: taskDef.or.text,
-          detail: taskDef.or.detail || "",
-        };
-      }
-      tasks.push(task);
-    }
-  }
-  return tasks;
-}
 
 function getBaseTasks(date) {
   const dayOfWeek = date.getDay();
@@ -161,15 +131,15 @@ function getTasksForDate(date) {
     if (pbOverride.new_tasks === "rest") {
       return [{ id: "rest", text: "Odpoczynek", detail: pbOverride.reason || "override" }];
     }
-    return expandDayTasks(pbOverride.new_tasks);
+    return pbOverride.new_tasks;
   }
 
   // Then check local DAY_OVERRIDES
   if (PLAN.DAY_OVERRIDES && PLAN.DAY_OVERRIDES[dateKey]) {
-    return expandDayTasks(PLAN.DAY_OVERRIDES[dateKey]);
+    return PLAN.DAY_OVERRIDES[dateKey];
   }
 
-  return expandDayTasks(getBaseTasks(date));
+  return getBaseTasks(date);
 }
 
 function getTasksForDay(date) {
@@ -363,10 +333,6 @@ function renderWeeklyPlan() {
     if (isToday) dayDiv.classList.add("is-today");
 
     const taskTexts = tasks.map(t => {
-      if (t.type === "4bld_ramp") {
-        const count = t.count || 1;
-        return `${t.text} (×${count})`;
-      }
       const detail = t.detail ? ` (${t.detail})` : "";
       return `${t.text}${detail}`;
     }).filter(Boolean);
@@ -728,7 +694,6 @@ function openEditModal(date) {
 
   const currentTasksEl = document.getElementById("edit-current-tasks");
   currentTasksEl.innerHTML = baseTasks.map(t => {
-    if (t.type === "4bld_ramp") return `${t.text} (×${t.count || 1})`;
     return `${t.text}${t.detail ? ` (${t.detail})` : ""}`;
   }).join("<br>") || "<em>Brak zadań</em>";
 
@@ -738,7 +703,7 @@ function openEditModal(date) {
   if (pbOverride && pbOverride.new_tasks && pbOverride.new_tasks !== "rest") {
     _editTasks = JSON.parse(JSON.stringify(pbOverride.new_tasks));
   } else {
-    _editTasks = expandDayTasks(baseTasks).map(t => ({ id: t.id, text: t.text, detail: t.detail || "" }));
+    _editTasks = baseTasks.map(t => ({ id: t.id, text: t.text, detail: t.detail || "" }));
   }
   renderEditTasksList();
 
@@ -931,7 +896,6 @@ function updateAuthButton() {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     formatDateKey,
-    expandDayTasks,
     getTasksForDay,
     getTasksForDate,
     getWeekVariant,
