@@ -681,6 +681,37 @@ function closeModal(event) {
 
 let _editTasks = [];
 
+const TASK_TEMPLATES = {
+  corners: {
+    text: "Rogi",
+    details: ["10 (rozgrzewka)", "15 (rozgrzewka)", "20", "25"]
+  },
+  edges: {
+    text: "Krawędzie",
+    details: ["10", "15", "20"]
+  },
+  solve3bld: {
+    text: "3BLD solvy",
+    details: ["10 prób", "10 (podtrzymanie)", "15–20 prób", "20–25 prób"]
+  },
+  solve4bld: {
+    text: "4BLD",
+    details: ["1 próba (podtrzymanie)", "2 próby", "3 próby", "4 próby"]
+  },
+  solve5bld: {
+    text: "5BLD",
+    details: ["1 próba", "1 próba (podtrzymanie)", "2 próby"]
+  },
+  speedmemo: {
+    text: "Speed-memo",
+    details: ["10 min", "10 min, limity 30s→25s→20s", "15 min"]
+  },
+  rest: {
+    text: "Odpoczynek",
+    details: ["pełny rest, bez kostki", "lekki trening", "zamiana z innym dniem"]
+  }
+};
+
 function openEditModal(date) {
   const dateKey = formatDateKey(date);
   const dayName = DAY_NAMES_FULL[date.getDay()];
@@ -725,17 +756,62 @@ function renderEditTasksList() {
   _editTasks.forEach((task, index) => {
     const row = document.createElement("div");
     row.className = "edit-task-row";
+
+    const templateKey = findTemplateKey(task.text);
+    const template = templateKey ? TASK_TEMPLATES[templateKey] : null;
+
+    let typeOptions = Object.entries(TASK_TEMPLATES).map(([key, t]) => {
+      const selected = t.text === task.text ? "selected" : "";
+      return `<option value="${key}" ${selected}>${t.text}</option>`;
+    }).join("");
+    typeOptions = `<option value="">-- wybierz --</option>` + typeOptions;
+
+    let detailOptions = "";
+    if (template) {
+      const detailInTemplate = template.details.includes(task.detail);
+      detailOptions = template.details.map(d => {
+        const selected = d === task.detail ? "selected" : "";
+        return `<option value="${d}" ${selected}>${d}</option>`;
+      }).join("");
+      if (task.detail && !detailInTemplate) {
+        detailOptions += `<option value="${task.detail}" selected>${task.detail}</option>`;
+      }
+    }
+    detailOptions = `<option value="">-- szczegóły --</option>` + detailOptions;
+
     row.innerHTML = `
-      <input type="text" class="edit-task-text" value="${task.text || ""}"
-             placeholder="Nazwa zadania" onchange="updateEditTask(${index}, 'text', this.value)">
-      <input type="text" class="edit-task-detail" value="${task.detail || ""}"
-             placeholder="Szczegóły" onchange="updateEditTask(${index}, 'detail', this.value)">
+      <select class="edit-task-type" onchange="changeTaskType(${index}, this.value)">
+        ${typeOptions}
+      </select>
+      <select class="edit-task-detail-select" onchange="updateEditTask(${index}, 'detail', this.value)">
+        ${detailOptions}
+      </select>
       <button type="button" class="btn-icon btn-remove" onclick="removeEditTask(${index})" title="Usuń">
         <i class="ti ti-trash"></i>
       </button>
     `;
     container.appendChild(row);
   });
+}
+
+function findTemplateKey(text) {
+  for (const [key, t] of Object.entries(TASK_TEMPLATES)) {
+    if (t.text === text) return key;
+  }
+  return null;
+}
+
+function changeTaskType(index, templateKey) {
+  const template = TASK_TEMPLATES[templateKey];
+  if (template) {
+    _editTasks[index].text = template.text;
+    _editTasks[index].detail = template.details[0];
+    _editTasks[index].id = templateKey + "_" + index;
+  } else {
+    _editTasks[index].text = "";
+    _editTasks[index].detail = "";
+  }
+  renderEditTasksList();
 }
 
 function updateEditTask(index, field, value) {
@@ -750,6 +826,13 @@ function addEditTask() {
   renderEditTasksList();
   const inputs = document.querySelectorAll(".edit-task-text");
   if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function addEditTaskWithSelect() {
+  _editTasks.push({ id: "new_" + Date.now(), text: "", detail: "" });
+  renderEditTasksList();
+  const selects = document.querySelectorAll(".edit-task-type");
+  if (selects.length) selects[selects.length - 1].focus();
 }
 
 function removeEditTask(index) {

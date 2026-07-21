@@ -902,25 +902,29 @@ body {
   align-items: center;
 }
 
-.edit-task-text {
-  flex: 2;
+.edit-task-type {
+  flex: 1;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
+  background: var(--bg);
+  cursor: pointer;
 }
 
-.edit-task-detail {
+.edit-task-detail-select {
   flex: 1;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
   color: var(--text-secondary);
+  background: var(--bg);
+  cursor: pointer;
 }
 
-.edit-task-text:focus,
-.edit-task-detail:focus {
+.edit-task-type:focus,
+.edit-task-detail-select:focus {
   outline: none;
   border-color: var(--accent);
 }
