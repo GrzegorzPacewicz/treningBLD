@@ -50,7 +50,11 @@ async function pbFetchOverrides() {
     const res = await fetch(
       `${PB_URL}/api/collections/${COLLECTION}/records?sort=-created&perPage=500`
     );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
     const data = await res.json();
 
     const byDate = {};
@@ -63,6 +67,9 @@ async function pbFetchOverrides() {
     return byDate;
   } catch (err) {
     console.warn("PocketBase fetch failed, using local plan:", err);
+    if (typeof handleApiError === "function" && err.status) {
+      handleApiError(err, "pobieranie planów");
+    }
     _pbOverrides = {};
     return {};
   }
@@ -75,7 +82,9 @@ function pbGetOverride(dateKey) {
 
 async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
   if (!_pbAuthToken) {
-    throw new Error("Musisz być zalogowany, żeby edytować plan");
+    const err = new Error("Musisz być zalogowany, żeby edytować plan");
+    err.status = 401;
+    throw err;
   }
 
   const body = {
@@ -93,8 +102,9 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Save failed: ${err}`);
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
 
   const record = await res.json();
@@ -104,7 +114,9 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
 
 async function pbDeleteOverride(dateKey) {
   if (!_pbAuthToken) {
-    throw new Error("Musisz być zalogowany, żeby usuwać override");
+    const err = new Error("Musisz być zalogowany, żeby usuwać override");
+    err.status = 401;
+    throw err;
   }
 
   const record = _pbOverrides[dateKey];
@@ -116,7 +128,9 @@ async function pbDeleteOverride(dateKey) {
   );
 
   if (!res.ok) {
-    throw new Error(`Delete failed: ${res.status}`);
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
 
   delete _pbOverrides[dateKey];
@@ -132,7 +146,11 @@ async function pbFetchProgress() {
     const res = await fetch(
       `${PB_URL}/api/collections/${PROGRESS_COLLECTION}/records?perPage=500`
     );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
     const data = await res.json();
 
     for (const record of data.items) {
@@ -145,6 +163,9 @@ async function pbFetchProgress() {
     return _pbProgress;
   } catch (err) {
     console.warn("PocketBase progress fetch failed:", err);
+    if (typeof handleApiError === "function" && err.status) {
+      handleApiError(err, "pobieranie postępu");
+    }
     return {};
   }
 }
@@ -173,7 +194,13 @@ async function pbSaveProgress(dateKey, tasks, tags) {
   });
 
   if (!res.ok) {
-    console.error("Progress save failed:", await res.text());
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    if (typeof handleApiError === "function") {
+      handleApiError(err, "zapis postępu");
+    } else {
+      console.error("Progress save failed:", res.status);
+    }
     return;
   }
 
@@ -182,10 +209,253 @@ async function pbSaveProgress(dateKey, tasks, tags) {
   _pbProgressIds[dateKey] = record.id;
 }
 
+// Weekly variants (templates)
+const VARIANTS_COLLECTION = "weekly_variants";
+let _pbVariants = [];
+
+async function pbFetchVariants() {
+  try {
+    const res = await fetch(
+      `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records?perPage=100`,
+      { headers: pbAuthHeaders() }
+    );
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    _pbVariants = data.items;
+    return _pbVariants;
+  } catch (err) {
+    console.warn("PocketBase variants fetch failed:", err);
+    if (typeof handleApiError === "function" && err.status) {
+      handleApiError(err, "pobieranie wariantów");
+    }
+    return [];
+  }
+}
+
+function pbGetVariants() {
+  return _pbVariants;
+}
+
+function pbGetVariantById(id) {
+  return _pbVariants.find(v => v.id === id) || null;
+}
+
+async function pbSaveVariant(variant) {
+  if (!_pbAuthToken) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const isUpdate = !!variant.id;
+  const url = isUpdate
+    ? `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records/${variant.id}`
+    : `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records`;
+
+  const res = await fetch(url, {
+    method: isUpdate ? "PATCH" : "POST",
+    headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
+    body: JSON.stringify(variant)
+  });
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const record = await res.json();
+  if (isUpdate) {
+    const idx = _pbVariants.findIndex(v => v.id === record.id);
+    if (idx >= 0) _pbVariants[idx] = record;
+  } else {
+    _pbVariants.push(record);
+  }
+  return record;
+}
+
+async function pbDeleteVariant(id) {
+  if (!_pbAuthToken) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const res = await fetch(
+    `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records/${id}`,
+    { method: "DELETE", headers: pbAuthHeaders() }
+  );
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  _pbVariants = _pbVariants.filter(v => v.id !== id);
+}
+
+// Weekly schedule (week -> variant mapping)
+const SCHEDULE_COLLECTION = "weekly_schedule";
+let _pbSchedule = {};
+
+async function pbFetchSchedule() {
+  try {
+    const res = await fetch(
+      `${PB_URL}/api/collections/${SCHEDULE_COLLECTION}/records?perPage=200`,
+      { headers: pbAuthHeaders() }
+    );
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    _pbSchedule = {};
+    for (const record of data.items) {
+      _pbSchedule[record.week_start] = record;
+    }
+    return _pbSchedule;
+  } catch (err) {
+    console.warn("PocketBase schedule fetch failed:", err);
+    if (typeof handleApiError === "function" && err.status) {
+      handleApiError(err, "pobieranie harmonogramu");
+    }
+    return {};
+  }
+}
+
+function pbGetSchedule(weekStart) {
+  return _pbSchedule[weekStart] || null;
+}
+
+async function pbSaveSchedule(weekStart, variantId) {
+  if (!_pbAuthToken) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const existing = _pbSchedule[weekStart];
+  const url = existing
+    ? `${PB_URL}/api/collections/${SCHEDULE_COLLECTION}/records/${existing.id}`
+    : `${PB_URL}/api/collections/${SCHEDULE_COLLECTION}/records`;
+
+  const res = await fetch(url, {
+    method: existing ? "PATCH" : "POST",
+    headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
+    body: JSON.stringify({ week_start: weekStart, variant: variantId })
+  });
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const record = await res.json();
+  _pbSchedule[weekStart] = record;
+  return record;
+}
+
+// Training focus (global rules)
+const FOCUS_COLLECTION = "training_focus";
+let _pbFocus = [];
+
+async function pbFetchFocus() {
+  try {
+    const res = await fetch(
+      `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records?sort=order&perPage=50`,
+      { headers: pbAuthHeaders() }
+    );
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    _pbFocus = data.items;
+    return _pbFocus;
+  } catch (err) {
+    console.warn("PocketBase focus fetch failed:", err);
+    if (typeof handleApiError === "function" && err.status) {
+      handleApiError(err, "pobieranie zasad");
+    }
+    return [];
+  }
+}
+
+function pbGetFocus() {
+  return _pbFocus;
+}
+
+async function pbSaveFocusItem(item) {
+  if (!_pbAuthToken) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const isUpdate = !!item.id;
+  const url = isUpdate
+    ? `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records/${item.id}`
+    : `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records`;
+
+  const res = await fetch(url, {
+    method: isUpdate ? "PATCH" : "POST",
+    headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
+    body: JSON.stringify(item)
+  });
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const record = await res.json();
+  if (isUpdate) {
+    const idx = _pbFocus.findIndex(f => f.id === record.id);
+    if (idx >= 0) _pbFocus[idx] = record;
+  } else {
+    _pbFocus.push(record);
+  }
+  _pbFocus.sort((a, b) => (a.order || 0) - (b.order || 0));
+  return record;
+}
+
+async function pbDeleteFocusItem(id) {
+  if (!_pbAuthToken) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const res = await fetch(
+    `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records/${id}`,
+    { method: "DELETE", headers: pbAuthHeaders() }
+  );
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  _pbFocus = _pbFocus.filter(f => f.id !== id);
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     pbFetchOverrides, pbGetOverride, pbSaveOverride, pbDeleteOverride,
     pbFetchProgress, pbGetProgress, pbSaveProgress,
-    PB_URL, COLLECTION, PROGRESS_COLLECTION
+    pbFetchVariants, pbGetVariants, pbGetVariantById, pbSaveVariant, pbDeleteVariant,
+    pbFetchSchedule, pbGetSchedule, pbSaveSchedule,
+    pbFetchFocus, pbGetFocus, pbSaveFocusItem, pbDeleteFocusItem,
+    PB_URL, COLLECTION, PROGRESS_COLLECTION, VARIANTS_COLLECTION, SCHEDULE_COLLECTION, FOCUS_COLLECTION
   };
 }

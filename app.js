@@ -1,20 +1,172 @@
+// Toast notification system
+function showToast(options) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${options.type || "error"}`;
+
+  let actionsHtml = "";
+  if (options.actions && options.actions.length) {
+    actionsHtml = `<div class="toast-actions">
+      ${options.actions.map(a => `<button class="toast-action ${a.primary ? "primary" : ""}" data-action="${a.id}">${a.label}</button>`).join("")}
+    </div>`;
+  }
+
+  toast.innerHTML = `
+    <div class="toast-header">
+      <div class="toast-content">
+        <div class="toast-title">${options.title}</div>
+        <div class="toast-message">${options.message}</div>
+      </div>
+      <button class="toast-close">&times;</button>
+    </div>
+    ${actionsHtml}
+  `;
+
+  toast.querySelector(".toast-close").onclick = () => hideToast(toast);
+
+  if (options.actions) {
+    toast.querySelectorAll(".toast-action").forEach(btn => {
+      btn.onclick = () => {
+        const action = options.actions.find(a => a.id === btn.dataset.action);
+        if (action && action.handler) action.handler();
+        hideToast(toast);
+      };
+    });
+  }
+
+  container.appendChild(toast);
+
+  const timeout = options.timeout ?? 8000;
+  if (timeout > 0) {
+    setTimeout(() => hideToast(toast), timeout);
+  }
+
+  return toast;
+}
+
+function hideToast(toast) {
+  if (!toast || toast.classList.contains("toast-hiding")) return;
+  toast.classList.add("toast-hiding");
+  setTimeout(() => toast.remove(), 200);
+}
+
+// Error handling
+const ERROR_MESSAGES = {
+  400: {
+    title: "Sesja wygasła",
+    message: "Twoje dane logowania są nieaktualne. Wyloguj się i zaloguj ponownie.",
+    action: "logout"
+  },
+  401: {
+    title: "Brak autoryzacji",
+    message: "Nie jesteś zalogowany lub sesja wygasła. Zaloguj się ponownie.",
+    action: "login"
+  },
+  403: {
+    title: "Brak dostępu",
+    message: "Nie masz uprawnień do tej operacji.",
+    action: null
+  },
+  404: {
+    title: "Nie znaleziono",
+    message: "Żądany zasób nie istnieje.",
+    action: null
+  },
+  500: {
+    title: "Błąd serwera",
+    message: "Coś poszło nie tak po stronie serwera. Spróbuj ponownie za chwilę.",
+    action: "retry"
+  },
+  502: {
+    title: "Serwer niedostępny",
+    message: "Serwer tymczasowo nie odpowiada. Spróbuj za kilka minut.",
+    action: null
+  },
+  503: {
+    title: "Serwer przeciążony",
+    message: "Serwer jest chwilowo niedostępny. Spróbuj ponownie później.",
+    action: null
+  },
+  network: {
+    title: "Brak połączenia",
+    message: "Sprawdź połączenie z internetem i spróbuj ponownie.",
+    action: "retry"
+  }
+};
+
+function handleApiError(error, context = "") {
+  let errorInfo;
+  let statusCode = null;
+
+  if (error instanceof TypeError && error.message.includes("fetch")) {
+    errorInfo = ERROR_MESSAGES.network;
+  } else if (error.message && error.message.match(/HTTP (\d+)/)) {
+    statusCode = parseInt(error.message.match(/HTTP (\d+)/)[1]);
+    errorInfo = ERROR_MESSAGES[statusCode] || {
+      title: `Błąd ${statusCode}`,
+      message: "Wystąpił nieoczekiwany błąd. Spróbuj ponownie.",
+      action: null
+    };
+  } else if (error.status) {
+    statusCode = error.status;
+    errorInfo = ERROR_MESSAGES[statusCode] || {
+      title: `Błąd ${statusCode}`,
+      message: error.message || "Wystąpił nieoczekiwany błąd.",
+      action: null
+    };
+  } else {
+    errorInfo = {
+      title: "Błąd",
+      message: error.message || "Wystąpił nieoczekiwany błąd.",
+      action: null
+    };
+  }
+
+  const actions = [];
+
+  if (errorInfo.action === "logout" || statusCode === 400) {
+    actions.push({
+      id: "logout",
+      label: "Wyloguj się",
+      primary: true,
+      handler: () => {
+        pbLogout();
+        updateAuthButton();
+        showToast({
+          type: "success",
+          title: "Wylogowano",
+          message: "Zaloguj się ponownie.",
+          timeout: 3000
+        });
+      }
+    });
+  } else if (errorInfo.action === "login" || statusCode === 401) {
+    actions.push({
+      id: "login",
+      label: "Zaloguj się",
+      primary: true,
+      handler: () => showLoginModal()
+    });
+  }
+
+  const toastOptions = {
+    type: "error",
+    title: errorInfo.title,
+    message: context ? `${errorInfo.message} (${context})` : errorInfo.message,
+    actions: actions.length ? actions : undefined
+  };
+
+  showToast(toastOptions);
+  console.error(`[${context || "API"}]`, error);
+}
+
 // Constants from PLAN
 const START_DATE = PLAN.startDate;
 const END_DATE = PLAN.endDate;
 const TOTAL_DAYS =
   Math.round((END_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
-
-const ERROR_TAGS = [
-  { code: "MEMO-ROG", label: "zapomniany/pomylony róg" },
-  { code: "MEMO-KRAW", label: "zapomniana/pomylona krawędź" },
-  { code: "MEMO-CEN", label: "błąd centrów (4/5BLD)" },
-  { code: "OZN", label: "niepewne/błędne oznaczenie litery" },
-  { code: "EXEC-POP", label: "pop kostki" },
-  { code: "EXEC-SETUP", label: "zły algorytm/setup obrotu" },
-  { code: "TPS", label: "za wolne tempo – obraz 'wygasł'" },
-  { code: "STRES", label: "zacięcie palców/distres" },
-  { code: "OK", label: "solve udany" },
-];
 
 const DAY_NAMES = ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
 const DAY_NAMES_FULL = [
@@ -110,16 +262,28 @@ function setErrorTags(date, tags) {
 function getWeekVariant(date) {
   const weekStart = getWeekStart(date);
   const weekKey = formatDateKey(weekStart);
-  return PLAN.WEEK_SCHEDULE[weekKey] || "default";
-}
 
+  // Try PocketBase schedule first
+  if (typeof pbGetSchedule === "function") {
+    const schedule = pbGetSchedule(weekKey);
+    if (schedule && schedule.variant) {
+      const variant = typeof pbGetVariantById === "function"
+        ? pbGetVariantById(schedule.variant)
+        : null;
+      if (variant) return variant;
+    }
+  }
+
+  // Fallback to plan.js
+  const variantName = PLAN.WEEK_SCHEDULE[weekKey] || "default";
+  return PLAN.WEEK_VARIANTS[variantName] || PLAN.WEEK_VARIANTS.default;
+}
 
 function getBaseTasks(date) {
   const dayOfWeek = date.getDay();
   const dayName = DAY_MAP[dayOfWeek];
   const variant = getWeekVariant(date);
-  const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
-  return variantTasks[dayName] || [];
+  return variant[dayName] || [];
 }
 
 function getTasksForDate(date) {
@@ -296,7 +460,6 @@ function renderWeeklyPlan() {
   const today = getEffectiveToday();
   const weekStart = getWeekStart(today);
   const variant = getWeekVariant(today);
-  const variantTasks = PLAN.WEEK_VARIANTS[variant] || PLAN.WEEK_VARIANTS.default;
 
   const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   const dayNamesPolish = {
@@ -311,8 +474,8 @@ function renderWeeklyPlan() {
 
   const variantHeader = document.createElement("div");
   variantHeader.className = "weekly-plan-variant";
-  const variantName = variantTasks.name || variant;
-  const variantDesc = variantTasks.description || "";
+  const variantName = variant.name || "Plan tygodniowy";
+  const variantDesc = variant.description || "";
   variantHeader.innerHTML = `
     <div class="variant-name">${variantName}</div>
     ${variantDesc ? `<div class="variant-desc">${variantDesc}</div>` : ""}
@@ -325,7 +488,7 @@ function renderWeeklyPlan() {
     dayDate.setDate(dayDate.getDate() + i);
     const isToday = formatDateKey(dayDate) === formatDateKey(today);
 
-    const tasks = variantTasks[dayName] || [];
+    const tasks = variant[dayName] || [];
     if (tasks.length === 0) continue;
 
     const dayDiv = document.createElement("div");
@@ -350,72 +513,16 @@ function toggleWeeklyPlan() {
   document.getElementById("weekly-plan-card").classList.toggle("collapsed");
 }
 
-function toggleErrorTags() {
-  document.getElementById("error-tags-card").classList.toggle("collapsed");
-}
-
-function renderErrorTags() {
-  const container = document.getElementById("error-tags-content");
-  const today = getEffectiveToday();
-  const tags = getErrorTags(today);
-
-  let html = '<div class="error-tags-grid">';
-
-  for (const tag of ERROR_TAGS) {
-    const count = tags[tag.code] || 0;
-    const isOk = tag.code === "OK";
-    const selectedClass = count > 0 ? (isOk ? "selected ok-tag" : "selected") : "";
-
-    html += `
-      <div class="error-tag ${selectedClass}"
-           onclick="toggleErrorTag('${tag.code}')"
-           oncontextmenu="event.preventDefault(); resetErrorTag('${tag.code}')"
-           title="${tag.label} (PPM=reset)">
-        <span class="error-tag-code">${tag.code}</span>
-        ${count > 0 ? `<span class="error-tag-count">${count}</span>` : ""}
-      </div>
-    `;
-  }
-
-  html += "</div>";
-
-  const totalErrors = Object.entries(tags)
-    .filter(([code]) => code !== "OK")
-    .reduce((sum, [, count]) => sum + count, 0);
-  const okCount = tags["OK"] || 0;
-
-  if (totalErrors > 0 || okCount > 0) {
-    html += `<div class="error-tags-summary">`;
-    if (okCount > 0) html += `<strong>${okCount}</strong> udanych`;
-    if (okCount > 0 && totalErrors > 0) html += ` · `;
-    if (totalErrors > 0) html += `<strong>${totalErrors}</strong> błędów`;
-    html += `</div>`;
-  }
-
-  container.innerHTML = html;
-}
-
-function toggleErrorTag(code) {
-  const today = getEffectiveToday();
-  const tags = getErrorTags(today);
-  tags[code] = (tags[code] || 0) + 1;
-  setErrorTags(today, tags);
-  renderErrorTags();
-}
-
-function resetErrorTag(code) {
-  const today = getEffectiveToday();
-  const tags = getErrorTags(today);
-  delete tags[code];
-  setErrorTags(today, tags);
-  renderErrorTags();
-}
-
 function renderFocusCard() {
   const container = document.getElementById("focus-content");
   container.innerHTML = "";
 
-  for (const item of PLAN.focus) {
+  // Try PocketBase focus first, fallback to plan.js
+  const focusItems = (typeof pbGetFocus === "function" && pbGetFocus().length > 0)
+    ? pbGetFocus()
+    : PLAN.focus;
+
+  for (const item of focusItems) {
     const div = document.createElement("div");
     div.className = "focus-item";
     div.innerHTML = `
@@ -562,8 +669,7 @@ function renderHistory() {
 
       // Get variant for this week
       const weekVariant = getWeekVariant(days[0]);
-      const variantData = PLAN.WEEK_VARIANTS[weekVariant] || PLAN.WEEK_VARIANTS.default;
-      const variantName = variantData.name || weekVariant;
+      const variantName = weekVariant.name || "Plan";
 
       // Week progress mini
       let progressHtml = '<div class="week-progress-mini">';
@@ -859,7 +965,12 @@ async function saveEditModal() {
   } else {
     newTasks = _editTasks.filter(t => t.text.trim());
     if (newTasks.length === 0) {
-      alert("Dodaj przynajmniej jedno zadanie");
+      showToast({
+        type: "warning",
+        title: "Brak zadań",
+        message: "Dodaj przynajmniej jedno zadanie lub wybierz dzień wolny.",
+        timeout: 4000
+      });
       return;
     }
   }
@@ -868,8 +979,14 @@ async function saveEditModal() {
     await pbSaveOverride(dateKey, newTasks, reason, originalTasks);
     closeEditModal();
     renderAll();
+    showToast({
+      type: "success",
+      title: "Zapisano",
+      message: "Plan został zaktualizowany.",
+      timeout: 2000
+    });
   } catch (e) {
-    alert("Błąd zapisu: " + e.message);
+    handleApiError(e, "zapis planu");
   }
 }
 
@@ -881,8 +998,14 @@ async function deleteEditOverride() {
     await pbDeleteOverride(dateKey);
     closeEditModal();
     renderAll();
+    showToast({
+      type: "success",
+      title: "Usunięto",
+      message: "Przywrócono domyślny plan.",
+      timeout: 2000
+    });
   } catch (e) {
-    alert("Błąd usuwania: " + e.message);
+    handleApiError(e, "usuwanie override");
   }
 }
 
@@ -891,7 +1014,6 @@ function renderAll() {
   renderProgressBar();
   renderFocusCard();
   renderWeeklyPlan();
-  renderErrorTags();
   renderTodayCard();
   renderHistory();
 }
@@ -903,7 +1025,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateAuthButton();
 
   if (typeof pbFetchOverrides === "function") {
-    await Promise.all([pbFetchOverrides(), pbFetchProgress()]);
+    await Promise.all([
+      pbFetchOverrides(),
+      pbFetchProgress(),
+      pbFetchVariants(),
+      pbFetchSchedule(),
+      pbFetchFocus()
+    ]);
   }
 
   renderAll();
@@ -947,9 +1075,22 @@ async function handleLogin(event) {
     await pbLogin(email, password);
     hideLoginModal();
     updateAuthButton();
+    await Promise.all([
+      pbFetchOverrides(),
+      pbFetchProgress(),
+      pbFetchVariants(),
+      pbFetchSchedule(),
+      pbFetchFocus()
+    ]);
     renderAll();
+    showToast({
+      type: "success",
+      title: "Zalogowano",
+      message: `Witaj, ${pbGetUser()?.email || ""}`,
+      timeout: 2000
+    });
   } catch (e) {
-    errorEl.textContent = e.message;
+    errorEl.textContent = "Nieprawidłowy email lub hasło";
   }
 }
 
@@ -972,6 +1113,447 @@ function updateAuthButton() {
   } else {
     btn.classList.remove("logged-in");
     btn.title = "Zaloguj się";
+  }
+}
+
+// Plans Panel
+function openPlansPanel() {
+  if (!pbIsLoggedIn()) {
+    showToast({
+      type: "warning",
+      title: "Zaloguj się",
+      message: "Musisz być zalogowany, żeby zarządzać planami.",
+      actions: [{ id: "login", label: "Zaloguj się", primary: true, handler: showLoginModal }]
+    });
+    return;
+  }
+  // Reset focus items cache
+  _focusItems = pbGetFocus().map(f => ({ ...f }));
+  _focusDirty = false;
+
+  document.getElementById("plans-modal").classList.add("open");
+  switchPlansTab("week");
+}
+
+function closePlansPanel(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById("plans-modal").classList.remove("open");
+}
+
+function switchPlansTab(tab) {
+  document.querySelectorAll(".plans-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".plans-tab-content").forEach(c => c.classList.add("hidden"));
+
+  document.querySelector(`.plans-tab[data-tab="${tab}"]`).classList.add("active");
+  document.getElementById(`plans-tab-${tab}`).classList.remove("hidden");
+
+  if (tab === "week") renderWeekTab();
+  if (tab === "variants") renderVariantsTab();
+  if (tab === "focus") renderFocusTab();
+}
+
+function renderWeekTab() {
+  const select = document.getElementById("week-variant-select");
+  const variants = pbGetVariants();
+  const today = getEffectiveToday();
+  const weekStart = getWeekStart(today);
+  const weekKey = formatDateKey(weekStart);
+  const currentSchedule = pbGetSchedule(weekKey);
+
+  select.innerHTML = '<option value="">-- wybierz wariant --</option>';
+  for (const v of variants) {
+    const selected = currentSchedule && currentSchedule.variant === v.id ? "selected" : "";
+    select.innerHTML += `<option value="${v.id}" ${selected}>${v.name}</option>`;
+  }
+
+  renderWeekPreview();
+}
+
+function renderWeekPreview() {
+  const container = document.getElementById("week-preview");
+  const today = getEffectiveToday();
+  const variant = getWeekVariant(today);
+
+  const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const dayNamesPolish = {
+    monday: "Poniedziałek", tuesday: "Wtorek", wednesday: "Środa",
+    thursday: "Czwartek", friday: "Piątek", saturday: "Sobota", sunday: "Niedziela"
+  };
+
+  let html = "";
+  for (const day of dayOrder) {
+    const tasks = variant[day] || [];
+    const taskTexts = tasks.map(t => t.text + (t.detail ? ` (${t.detail})` : "")).join(" • ");
+    html += `
+      <div class="week-preview-day">
+        <div class="week-preview-day-name">${dayNamesPolish[day]}</div>
+        <div class="week-preview-day-tasks">${taskTexts || "<em>brak zadań</em>"}</div>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+async function onWeekVariantChange() {
+  const select = document.getElementById("week-variant-select");
+  const variantId = select.value;
+  const today = getEffectiveToday();
+  const weekStart = getWeekStart(today);
+  const weekKey = formatDateKey(weekStart);
+
+  if (!variantId) return;
+
+  try {
+    await pbSaveSchedule(weekKey, variantId);
+    renderWeekPreview();
+    renderAll();
+    showToast({ type: "success", title: "Zapisano", message: "Wariant tygodnia zmieniony.", timeout: 2000 });
+  } catch (e) {
+    handleApiError(e, "zapis harmonogramu");
+  }
+}
+
+function renderVariantsTab() {
+  const container = document.getElementById("variants-list");
+  const variants = pbGetVariants();
+
+  if (variants.length === 0) {
+    container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Brak wariantów. Utwórz pierwszy!</p>';
+    return;
+  }
+
+  container.innerHTML = variants.map(v => `
+    <div class="variant-item" onclick="openVariantEditor('${v.id}')">
+      <div>
+        <div class="variant-item-name">${v.name}</div>
+        <div class="variant-item-desc">${v.description || ""}</div>
+      </div>
+      <i class="ti ti-chevron-right" style="color: var(--text-secondary)"></i>
+    </div>
+  `).join("");
+}
+
+let _currentVariant = null;
+
+function openVariantEditor(variantId) {
+  const modal = document.getElementById("variant-modal");
+
+  if (variantId) {
+    _currentVariant = { ...pbGetVariantById(variantId) };
+    document.getElementById("variant-modal-title").textContent = "Edytuj wariant";
+    document.getElementById("variant-delete-btn").style.display = "block";
+  } else {
+    _currentVariant = {
+      name: "", description: "",
+      monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
+    };
+    document.getElementById("variant-modal-title").textContent = "Nowy wariant";
+    document.getElementById("variant-delete-btn").style.display = "none";
+  }
+
+  document.getElementById("variant-id").value = _currentVariant.id || "";
+  document.getElementById("variant-name").value = _currentVariant.name || "";
+  document.getElementById("variant-desc").value = _currentVariant.description || "";
+
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  for (const day of days) {
+    renderVariantDayTasks(day);
+  }
+
+  modal.classList.add("open");
+}
+
+function closeVariantEditor(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById("variant-modal").classList.remove("open");
+  _currentVariant = null;
+}
+
+function renderVariantDayTasks(day) {
+  const container = document.getElementById(`variant-${day}`);
+  const tasks = _currentVariant[day] || [];
+
+  container.innerHTML = tasks.map((t, idx) => `
+    <div class="variant-task-row">
+      <select onchange="updateVariantTask('${day}', ${idx}, 'type', this.value)">
+        <option value="">-- wybierz --</option>
+        ${Object.entries(TASK_TEMPLATES).map(([key, tmpl]) =>
+          `<option value="${key}" ${t.text === tmpl.text ? "selected" : ""}>${tmpl.text}</option>`
+        ).join("")}
+      </select>
+      <select onchange="updateVariantTask('${day}', ${idx}, 'detail', this.value)">
+        <option value="">-- szczegóły --</option>
+        ${(TASK_TEMPLATES[findTemplateKeyByText(t.text)]?.details || []).map(d =>
+          `<option value="${d}" ${t.detail === d ? "selected" : ""}>${d}</option>`
+        ).join("")}
+      </select>
+      <button class="btn-icon btn-remove" onclick="removeVariantTask('${day}', ${idx})">
+        <i class="ti ti-trash"></i>
+      </button>
+    </div>
+  `).join("");
+}
+
+function findTemplateKeyByText(text) {
+  for (const [key, tmpl] of Object.entries(TASK_TEMPLATES)) {
+    if (tmpl.text === text) return key;
+  }
+  return null;
+}
+
+function addVariantTask(day) {
+  if (!_currentVariant[day]) _currentVariant[day] = [];
+  _currentVariant[day].push({ id: `${day}_${Date.now()}`, text: "", detail: "" });
+  renderVariantDayTasks(day);
+}
+
+function updateVariantTask(day, idx, field, value) {
+  if (field === "type") {
+    const tmpl = TASK_TEMPLATES[value];
+    if (tmpl) {
+      _currentVariant[day][idx].text = tmpl.text;
+      _currentVariant[day][idx].detail = tmpl.details[0] || "";
+      _currentVariant[day][idx].id = `${value}_${day}_${idx}`;
+    }
+    renderVariantDayTasks(day);
+  } else if (field === "detail") {
+    _currentVariant[day][idx].detail = value;
+  }
+}
+
+function removeVariantTask(day, idx) {
+  _currentVariant[day].splice(idx, 1);
+  renderVariantDayTasks(day);
+}
+
+async function saveVariant() {
+  _currentVariant.name = document.getElementById("variant-name").value.trim();
+  _currentVariant.description = document.getElementById("variant-desc").value.trim();
+
+  if (!_currentVariant.name) {
+    showToast({ type: "warning", title: "Błąd", message: "Podaj nazwę wariantu.", timeout: 3000 });
+    return;
+  }
+
+  try {
+    await pbSaveVariant(_currentVariant);
+    closeVariantEditor();
+    renderVariantsTab();
+    renderWeekTab();
+    showToast({ type: "success", title: "Zapisano", message: "Wariant zapisany.", timeout: 2000 });
+  } catch (e) {
+    handleApiError(e, "zapis wariantu");
+  }
+}
+
+async function deleteCurrentVariant() {
+  if (!_currentVariant?.id) return;
+  if (!confirm("Usunąć ten wariant?")) return;
+
+  try {
+    await pbDeleteVariant(_currentVariant.id);
+    closeVariantEditor();
+    renderVariantsTab();
+    renderWeekTab();
+    showToast({ type: "success", title: "Usunięto", message: "Wariant usunięty.", timeout: 2000 });
+  } catch (e) {
+    handleApiError(e, "usuwanie wariantu");
+  }
+}
+
+// Focus tab
+let _focusItems = [];
+
+function renderFocusTab() {
+  const container = document.getElementById("focus-list");
+
+  // Initialize from PB on first render
+  if (_focusItems.length === 0) {
+    _focusItems = pbGetFocus().map(f => ({ ...f }));
+  }
+
+  // Filter out deleted items for display
+  const visibleItems = _focusItems.filter(f => !f._deleted);
+
+  if (visibleItems.length === 0) {
+    container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Brak zasad. Dodaj pierwszą!</p>';
+    return;
+  }
+
+  container.innerHTML = visibleItems.map((item) => {
+    const idx = _focusItems.indexOf(item);
+    return `
+    <div class="focus-list-item" data-idx="${idx}">
+      <div class="focus-list-item-content">
+        <input type="text" value="${escapeHtml(item.title || "")}" placeholder="Tytuł"
+               oninput="_focusItems[${idx}].title = this.value; markFocusDirty()">
+        <input type="text" value="${escapeHtml(item.description || "")}" placeholder="Opis"
+               oninput="_focusItems[${idx}].description = this.value; markFocusDirty()">
+      </div>
+      <button class="btn-icon btn-remove" onclick="removeFocusItemLocal(${idx})" title="Usuń">
+        <i class="ti ti-trash"></i>
+      </button>
+    </div>
+  `}).join("");
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+let _focusDirty = false;
+
+function markFocusDirty() {
+  _focusDirty = true;
+  const saveBtn = document.getElementById("focus-save-btn");
+  if (saveBtn) saveBtn.disabled = false;
+}
+
+function removeFocusItemLocal(idx) {
+  const item = _focusItems[idx];
+  if (item.id) {
+    item._deleted = true;
+  } else {
+    _focusItems.splice(idx, 1);
+  }
+  markFocusDirty();
+  renderFocusTab();
+}
+
+function addFocusItem() {
+  _focusItems.push({ title: "", description: "", order: _focusItems.length });
+  markFocusDirty();
+  renderFocusTab();
+  // Focus the new input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll("#focus-list input");
+    if (inputs.length) inputs[inputs.length - 2]?.focus();
+  }, 50);
+}
+
+async function saveAllFocus() {
+  const saveBtn = document.getElementById("focus-save-btn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    // Delete removed items
+    for (const item of _focusItems.filter(f => f._deleted && f.id)) {
+      await pbDeleteFocusItem(item.id);
+    }
+
+    // Save new/updated items
+    const toSave = _focusItems.filter(f => !f._deleted);
+    for (let i = 0; i < toSave.length; i++) {
+      toSave[i].order = i;
+      await pbSaveFocusItem(toSave[i]);
+    }
+
+    // Refresh from PB
+    await pbFetchFocus();
+    _focusItems = pbGetFocus().map(f => ({ ...f }));
+    _focusDirty = false;
+
+    renderFocusTab();
+    renderFocusCard();
+    showToast({ type: "success", title: "Zapisano", message: "Zasady zaktualizowane.", timeout: 2000 });
+  } catch (e) {
+    handleApiError(e, "zapis zasad");
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function deleteFocusItem(id) {
+  if (!confirm("Usunąć tę zasadę?")) return;
+  try {
+    await pbDeleteFocusItem(id);
+    renderFocusTab();
+    renderFocusCard();
+    showToast({ type: "success", title: "Usunięto", timeout: 1500 });
+  } catch (e) {
+    handleApiError(e, "usuwanie zasady");
+  }
+}
+
+// Migration from plan.js to PocketBase
+async function migrateFromPlanJS() {
+  if (!pbIsLoggedIn()) {
+    showToast({ type: "error", title: "Błąd", message: "Musisz być zalogowany.", timeout: 3000 });
+    return;
+  }
+
+  if (!confirm("Czy na pewno chcesz zaimportować dane z plan.js do PocketBase?\n\nTo doda warianty, harmonogram i zasady focus.")) {
+    return;
+  }
+
+  const btn = document.getElementById("migrate-btn");
+  if (btn) btn.disabled = true;
+
+  try {
+    let imported = { variants: 0, schedule: 0, focus: 0 };
+
+    // 1. Import WEEK_VARIANTS
+    const variantNameToId = {};
+    for (const [key, variant] of Object.entries(PLAN.WEEK_VARIANTS)) {
+      const data = {
+        name: variant.name || key,
+        description: variant.description || "",
+        monday: variant.monday || [],
+        tuesday: variant.tuesday || [],
+        wednesday: variant.wednesday || [],
+        thursday: variant.thursday || [],
+        friday: variant.friday || [],
+        saturday: variant.saturday || [],
+        sunday: variant.sunday || []
+      };
+      const saved = await pbSaveVariant(data);
+      variantNameToId[key] = saved.id;
+      imported.variants++;
+    }
+
+    // 2. Import WEEK_SCHEDULE
+    for (const [weekStart, variantKey] of Object.entries(PLAN.WEEK_SCHEDULE)) {
+      const variantId = variantNameToId[variantKey];
+      if (variantId) {
+        await pbSaveSchedule(weekStart, variantId);
+        imported.schedule++;
+      }
+    }
+
+    // 3. Import focus
+    for (let i = 0; i < PLAN.focus.length; i++) {
+      const item = PLAN.focus[i];
+      await pbSaveFocusItem({
+        title: item.title,
+        description: item.description,
+        order: i
+      });
+      imported.focus++;
+    }
+
+    // Refresh data
+    await Promise.all([pbFetchVariants(), pbFetchSchedule(), pbFetchFocus()]);
+    _focusItems = pbGetFocus().map(f => ({ ...f }));
+
+    renderWeekTab();
+    renderVariantsTab();
+    renderFocusTab();
+    renderFocusCard();
+    renderWeeklyPlan();
+    renderAll();
+
+    showToast({
+      type: "success",
+      title: "Import zakończony",
+      message: `Zaimportowano: ${imported.variants} wariantów, ${imported.schedule} tygodni, ${imported.focus} zasad.`,
+      timeout: 5000
+    });
+
+  } catch (e) {
+    handleApiError(e, "import danych");
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
