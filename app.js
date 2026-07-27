@@ -790,31 +790,31 @@ let _editTasks = [];
 const TASK_TEMPLATES = {
   corners: {
     text: "Rogi",
-    details: ["10 (rozgrzewka)", "15 (rozgrzewka)", "20", "25"]
+    details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
   },
   edges: {
     text: "Krawędzie",
-    details: ["10", "15", "20"]
+    details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
   },
   solve3bld: {
     text: "3BLD solvy",
-    details: ["10 prób", "10 (podtrzymanie)", "15–20 prób", "20–25 prób"]
+    details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
   },
   solve4bld: {
     text: "4BLD",
-    details: ["1 próba (podtrzymanie)", "2 próby", "3 próby", "4 próby"]
+    details: ["1 próba", "2 próby", "3 próby", "5 prób", "10 prób"]
   },
   solve5bld: {
     text: "5BLD",
-    details: ["1 próba", "1 próba (podtrzymanie)", "2 próby"]
+    details: ["1 próba", "2 próby", "3 próby", "5 prób", "10 prób"]
   },
   speedmemo: {
     text: "Speed-memo",
-    details: ["10 min", "10 min, limity 30s→25s→20s", "15 min"]
+    details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
   },
   rest: {
     text: "Odpoczynek",
-    details: ["pełny rest, bez kostki", "lekki trening", "zamiana z innym dniem"]
+    details: ["pełny rest", "lekki trening", "zamiana z innym dniem"]
   }
 };
 
@@ -873,25 +873,27 @@ function renderEditTasksList() {
     typeOptions = `<option value="">-- wybierz --</option>` + typeOptions;
 
     let detailOptions = "";
+    const isCustomDetail = template && task.detail && !template.details.includes(task.detail);
     if (template) {
-      const detailInTemplate = template.details.includes(task.detail);
       detailOptions = template.details.map(d => {
         const selected = d === task.detail ? "selected" : "";
         return `<option value="${d}" ${selected}>${d}</option>`;
       }).join("");
-      if (task.detail && !detailInTemplate) {
-        detailOptions += `<option value="${task.detail}" selected>${task.detail}</option>`;
-      }
     }
     detailOptions = `<option value="">-- szczegóły --</option>` + detailOptions;
+    detailOptions += `<option value="__custom__" ${isCustomDetail ? "selected" : ""}>Inna...</option>`;
+
+    const showCustomInput = isCustomDetail || task._customDetail;
 
     row.innerHTML = `
       <select class="edit-task-type" onchange="changeTaskType(${index}, this.value)">
         ${typeOptions}
       </select>
-      <select class="edit-task-detail-select" onchange="updateEditTask(${index}, 'detail', this.value)">
+      <select class="edit-task-detail-select" onchange="onDetailSelectChange(${index}, this.value)">
         ${detailOptions}
       </select>
+      ${showCustomInput ? `<input type="text" class="edit-task-custom" value="${escapeHtml(task.detail || "")}"
+        oninput="updateEditTask(${index}, 'detail', this.value)" placeholder="wpisz...">` : ""}
       <button type="button" class="btn-icon btn-remove" onclick="removeEditTask(${index})" title="Usuń">
         <i class="ti ti-trash"></i>
       </button>
@@ -924,6 +926,20 @@ function updateEditTask(index, field, value) {
   _editTasks[index][field] = value;
   if (field === "text") {
     _editTasks[index].id = value.toLowerCase().replace(/\s+/g, "_") + "_" + index;
+  }
+}
+
+function onDetailSelectChange(index, value) {
+  if (value === "__custom__") {
+    _editTasks[index]._customDetail = true;
+    _editTasks[index].detail = "";
+    renderEditTasksList();
+    const inputs = document.querySelectorAll(".edit-task-custom");
+    if (inputs[index]) inputs[index].focus();
+  } else {
+    _editTasks[index]._customDetail = false;
+    _editTasks[index].detail = value;
+    renderEditTasksList();
   }
 }
 
@@ -1273,7 +1289,21 @@ function renderVariantDayTasks(day) {
   const container = document.getElementById(`variant-${day}`);
   const tasks = _currentVariant[day] || [];
 
-  container.innerHTML = tasks.map((t, idx) => `
+  container.innerHTML = tasks.map((t, idx) => {
+    const templateKey = findTemplateKeyByText(t.text);
+    const template = templateKey ? TASK_TEMPLATES[templateKey] : null;
+    const isCustomDetail = template && t.detail && !template.details.includes(t.detail);
+    const showCustomInput = isCustomDetail || t._customDetail;
+
+    let detailOptions = `<option value="">-- szczegóły --</option>`;
+    if (template) {
+      detailOptions += template.details.map(d =>
+        `<option value="${d}" ${d === t.detail ? "selected" : ""}>${d}</option>`
+      ).join("");
+    }
+    detailOptions += `<option value="__custom__" ${isCustomDetail ? "selected" : ""}>Inna...</option>`;
+
+    return `
     <div class="variant-task-row">
       <select onchange="updateVariantTask('${day}', ${idx}, 'type', this.value)">
         <option value="">-- wybierz --</option>
@@ -1281,17 +1311,16 @@ function renderVariantDayTasks(day) {
           `<option value="${key}" ${t.text === tmpl.text ? "selected" : ""}>${tmpl.text}</option>`
         ).join("")}
       </select>
-      <select onchange="updateVariantTask('${day}', ${idx}, 'detail', this.value)">
-        <option value="">-- szczegóły --</option>
-        ${(TASK_TEMPLATES[findTemplateKeyByText(t.text)]?.details || []).map(d =>
-          `<option value="${d}" ${t.detail === d ? "selected" : ""}>${d}</option>`
-        ).join("")}
+      <select onchange="onVariantDetailChange('${day}', ${idx}, this.value)">
+        ${detailOptions}
       </select>
+      ${showCustomInput ? `<input type="text" class="variant-task-custom" value="${escapeHtml(t.detail || "")}"
+        oninput="_currentVariant['${day}'][${idx}].detail = this.value" placeholder="wpisz...">` : ""}
       <button class="btn-icon btn-remove" onclick="removeVariantTask('${day}', ${idx})">
         <i class="ti ti-trash"></i>
       </button>
     </div>
-  `).join("");
+  `}).join("");
 }
 
 function findTemplateKeyByText(text) {
@@ -1305,6 +1334,20 @@ function addVariantTask(day) {
   if (!_currentVariant[day]) _currentVariant[day] = [];
   _currentVariant[day].push({ id: `${day}_${Date.now()}`, text: "", detail: "" });
   renderVariantDayTasks(day);
+}
+
+function onVariantDetailChange(day, idx, value) {
+  if (value === "__custom__") {
+    _currentVariant[day][idx]._customDetail = true;
+    _currentVariant[day][idx].detail = "";
+    renderVariantDayTasks(day);
+    const inputs = document.querySelectorAll(`#variant-${day} .variant-task-custom`);
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  } else {
+    _currentVariant[day][idx]._customDetail = false;
+    _currentVariant[day][idx].detail = value;
+    renderVariantDayTasks(day);
+  }
 }
 
 function updateVariantTask(day, idx, field, value) {

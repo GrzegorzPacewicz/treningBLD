@@ -1367,6 +1367,23 @@ body {
   color: var(--accent);
 }
 
+/* Custom detail inputs */
+.edit-task-custom,
+.variant-task-custom {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--card);
+}
+
+.edit-task-custom:focus,
+.variant-task-custom:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* Focus actions */
 .focus-actions {
   display: flex;
