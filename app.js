@@ -792,9 +792,17 @@ const TASK_TEMPLATES = {
     text: "Rogi",
     details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
   },
+  corners_trainer: {
+    text: "Rogi (BLD Trainer)",
+    details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
+  },
   edges: {
     text: "Krawędzie",
     details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
+  },
+  edges_trainer: {
+    text: "Krawędzie (BLD Trainer)",
+    details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
   },
   solve3bld: {
     text: "3BLD solvy",

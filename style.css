@@ -1470,3 +1470,42 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Mobile responsive for task rows */
+@media (max-width: 480px) {
+  .variant-task-row,
+  .edit-task-row {
+    flex-wrap: wrap;
+  }
+
+  .variant-task-row select,
+  .edit-task-row select,
+  .edit-task-type,
+  .edit-task-detail-select {
+    flex: 1 1 calc(50% - 20px);
+    min-width: 0;
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+
+  .variant-task-custom,
+  .edit-task-custom {
+    flex: 1 1 100%;
+    margin-top: 6px;
+  }
+
+  .variant-task-row .btn-icon,
+  .edit-task-row .btn-icon {
+    flex-shrink: 0;
+  }
+
+  .variant-modal-content {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .edit-modal-content {
+    max-width: 100%;
+    margin: 0;
+  }
+}
