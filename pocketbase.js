@@ -6,7 +6,22 @@ let _pbAuthToken = localStorage.getItem("pb_auth_token") || null;
 let _pbAuthModel = JSON.parse(localStorage.getItem("pb_auth_model") || "null");
 
 function pbIsLoggedIn() {
-  return !!_pbAuthToken;
+  if (!_pbAuthToken) return false;
+  // Check if token looks expired (JWT tokens have 3 parts)
+  try {
+    const parts = _pbAuthToken.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        // Token expired, clear it
+        pbLogout();
+        return false;
+      }
+    }
+  } catch (e) {
+    // If token parsing fails, assume it's still valid and let server decide
+  }
+  return true;
 }
 
 function pbGetUser() {
@@ -81,7 +96,7 @@ function pbGetOverride(dateKey) {
 }
 
 async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany, żeby edytować plan");
     err.status = 401;
     throw err;
@@ -92,7 +107,8 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
     action: tasks === "rest" ? "rest" : "custom",
     original_tasks: originalTasks,
     new_tasks: tasks,
-    reason: reason || ""
+    reason: reason || "",
+    user: _pbAuthModel?.id
   };
 
   const res = await fetch(`${PB_URL}/api/collections/${COLLECTION}/records`, {
@@ -102,8 +118,10 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
   });
 
   if (!res.ok) {
-    const err = new Error(`HTTP ${res.status}`);
+    const errData = await res.json().catch(() => ({}));
+    const err = new Error(errData.message || `HTTP ${res.status}`);
     err.status = res.status;
+    err.data = errData;
     throw err;
   }
 
@@ -113,7 +131,7 @@ async function pbSaveOverride(dateKey, tasks, reason, originalTasks) {
 }
 
 async function pbDeleteOverride(dateKey) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany, żeby usuwać override");
     err.status = 401;
     throw err;
@@ -175,12 +193,12 @@ function pbGetProgress(dateKey) {
 }
 
 async function pbSaveProgress(dateKey, tasks, tags) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     console.warn("Not logged in, skipping PocketBase save");
     return;
   }
 
-  const body = { date: dateKey, tasks, tags };
+  const body = { date: dateKey, tasks, tags, user: _pbAuthModel?.id };
   const existingId = _pbProgressIds[dateKey];
 
   const url = existingId
@@ -245,7 +263,7 @@ function pbGetVariantById(id) {
 }
 
 async function pbSaveVariant(variant) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany");
     err.status = 401;
     throw err;
@@ -256,10 +274,11 @@ async function pbSaveVariant(variant) {
     ? `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records/${variant.id}`
     : `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records`;
 
+  const body = { ...variant, user: _pbAuthModel?.id };
   const res = await fetch(url, {
     method: isUpdate ? "PATCH" : "POST",
     headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
-    body: JSON.stringify(variant)
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
@@ -279,7 +298,7 @@ async function pbSaveVariant(variant) {
 }
 
 async function pbDeleteVariant(id) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany");
     err.status = 401;
     throw err;
@@ -334,7 +353,7 @@ function pbGetSchedule(weekStart) {
 }
 
 async function pbSaveSchedule(weekStart, variantId) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany");
     err.status = 401;
     throw err;
@@ -348,7 +367,7 @@ async function pbSaveSchedule(weekStart, variantId) {
   const res = await fetch(url, {
     method: existing ? "PATCH" : "POST",
     headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
-    body: JSON.stringify({ week_start: weekStart, variant: variantId })
+    body: JSON.stringify({ week_start: weekStart, variant: variantId, user: _pbAuthModel?.id })
   });
 
   if (!res.ok) {
@@ -394,7 +413,7 @@ function pbGetFocus() {
 }
 
 async function pbSaveFocusItem(item) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany");
     err.status = 401;
     throw err;
@@ -405,10 +424,11 @@ async function pbSaveFocusItem(item) {
     ? `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records/${item.id}`
     : `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records`;
 
+  const body = { ...item, user: _pbAuthModel?.id };
   const res = await fetch(url, {
     method: isUpdate ? "PATCH" : "POST",
     headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
-    body: JSON.stringify(item)
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
@@ -429,7 +449,7 @@ async function pbSaveFocusItem(item) {
 }
 
 async function pbDeleteFocusItem(id) {
-  if (!_pbAuthToken) {
+  if (!pbIsLoggedIn()) {
     const err = new Error("Musisz być zalogowany");
     err.status = 401;
     throw err;

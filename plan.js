@@ -6,9 +6,8 @@
  */
 
 var PLAN = {
-  // Okres trwania programu
+  // Data rozpoczęcia śledzenia
   startDate: new Date(2026, 6, 1), // 1 lipca 2026
-  endDate: new Date(2026, 7, 31), // 31 sierpnia 2026
 
   // Cele okresu
   goals: [

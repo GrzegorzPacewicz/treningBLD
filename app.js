@@ -164,9 +164,6 @@ function handleApiError(error, context = "") {
 
 // Constants from PLAN
 const START_DATE = PLAN.startDate;
-const END_DATE = PLAN.endDate;
-const TOTAL_DAYS =
-  Math.round((END_DATE - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
 const DAY_NAMES = ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
 const DAY_NAMES_FULL = [
@@ -365,13 +362,10 @@ function getEffectiveToday() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  if (now >= START_DATE && now <= END_DATE) {
-    return now;
-  } else if (now < START_DATE) {
+  if (now < START_DATE) {
     return new Date(START_DATE);
-  } else {
-    return new Date(END_DATE);
   }
+  return now;
 }
 
 function setTestToday(date) {
@@ -395,28 +389,25 @@ function getWeekStart(date) {
 
 // Render functions
 function renderStatsBar() {
-  let fullDays = 0;
-  let partialDays = 0;
   const today = getEffectiveToday();
+  const weekStart = getWeekStart(today);
 
-  for (let i = 0; i < TOTAL_DAYS; i++) {
+  // Count total completed days since start
+  let totalComplete = 0;
+  const daysSinceStart = Math.floor((today - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
+  for (let i = 0; i < daysSinceStart; i++) {
     const date = new Date(START_DATE);
     date.setDate(date.getDate() + i);
-
-    const status = isDayComplete(date);
-    if (status.full) fullDays++;
-    else if (status.partial) partialDays++;
+    if (isDayComplete(date).full) totalComplete++;
   }
 
-  document.getElementById("days-progress").textContent =
-    `${fullDays}/${TOTAL_DAYS}`;
+  document.getElementById("total-days").textContent = totalComplete;
   document.getElementById("streak-count").textContent = calculateStreak();
 
   // Week progress (Monday-Sunday)
   const weekProgressEl = document.getElementById("week-progress");
   weekProgressEl.innerHTML = "";
 
-  const weekStart = getWeekStart(today);
   for (let i = 0; i < 7; i++) {
     const dayDate = new Date(weekStart);
     dayDate.setDate(dayDate.getDate() + i);
@@ -424,7 +415,7 @@ function renderStatsBar() {
     const dot = document.createElement("div");
     dot.className = "day-dot";
 
-    if (dayDate >= START_DATE && dayDate <= END_DATE) {
+    if (dayDate >= START_DATE) {
       const status = isDayComplete(dayDate);
       if (status.full) dot.classList.add("full");
       else if (status.partial) dot.classList.add("partial");
@@ -432,26 +423,6 @@ function renderStatsBar() {
 
     weekProgressEl.appendChild(dot);
   }
-}
-
-function renderProgressBar() {
-  const today = getEffectiveToday();
-  let completedDays = 0;
-
-  for (let i = 0; i < TOTAL_DAYS; i++) {
-    const date = new Date(START_DATE);
-    date.setDate(date.getDate() + i);
-    if (isDayComplete(date).full) completedDays++;
-  }
-
-  const percent = Math.round((completedDays / TOTAL_DAYS) * 100);
-  document.getElementById("progress-percent").textContent = `${percent}%`;
-  document.getElementById("progress-fill").style.width = `${percent}%`;
-
-  // Today marker position
-  const daysPassed = Math.floor((today - START_DATE) / (1000 * 60 * 60 * 24));
-  const todayPercent = Math.min(100, Math.max(0, (daysPassed / TOTAL_DAYS) * 100));
-  document.getElementById("progress-today").style.left = `calc(${todayPercent}% - 1px)`;
 }
 
 function renderWeeklyPlan() {
@@ -624,10 +595,15 @@ function renderHistory() {
   const today = getEffectiveToday();
   const currentWeek = getWeekOfProgram(today);
 
+  // Calculate days from start to end of current week
+  const weekEnd = new Date(getWeekStart(today));
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const totalDays = Math.floor((weekEnd - START_DATE) / (1000 * 60 * 60 * 24)) + 1;
+
   // Group days by month and week
   const months = {};
 
-  for (let i = 0; i < TOTAL_DAYS; i++) {
+  for (let i = 0; i < totalDays; i++) {
     const date = new Date(START_DATE);
     date.setDate(date.getDate() + i);
 
@@ -788,20 +764,16 @@ function closeModal(event) {
 let _editTasks = [];
 
 const TASK_TEMPLATES = {
-  corners: {
-    text: "Rogi",
-    details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
-  },
-  corners_trainer: {
-    text: "Rogi (BLD Trainer)",
+  blddriller_corners: {
+    text: "BLD Driller (rogi)",
     details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
   },
-  edges: {
-    text: "Krawędzie",
-    details: ["5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]
+  blddriller_edges: {
+    text: "BLD Driller (krawędzie)",
+    details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
   },
-  edges_trainer: {
-    text: "Krawędzie (BLD Trainer)",
+  blddriller_parity: {
+    text: "BLD Driller (parity)",
     details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
   },
   solve3bld: {
@@ -812,13 +784,21 @@ const TASK_TEMPLATES = {
     text: "4BLD",
     details: ["1 próba", "2 próby", "3 próby", "5 prób", "10 prób"]
   },
+  drill4bld: {
+    text: "4BLD trening",
+    details: ["centry", "wings"]
+  },
   solve5bld: {
     text: "5BLD",
     details: ["1 próba", "2 próby", "3 próby", "5 prób", "10 prób"]
   },
+  drill5bld: {
+    text: "5BLD trening",
+    details: ["centry", "wings", "midges", "parity"]
+  },
   speedmemo: {
     text: "Speed-memo",
-    details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
+    details: ["5", "10", "15", "20", "25", "30"]
   },
   rest: {
     text: "Odpoczynek",
@@ -974,6 +954,7 @@ function closeEditModal(event) {
   if (event && event.target !== event.currentTarget) return;
   document.getElementById("edit-modal").classList.remove("open");
   document.body.style.overflow = "";
+  renderAll();
 }
 
 async function saveEditModal() {
@@ -1035,7 +1016,6 @@ async function deleteEditOverride() {
 
 function renderAll() {
   renderStatsBar();
-  renderProgressBar();
   renderFocusCard();
   renderWeeklyPlan();
   renderTodayCard();
@@ -1162,6 +1142,7 @@ function openPlansPanel() {
 function closePlansPanel(event) {
   if (event && event.target !== event.currentTarget) return;
   document.getElementById("plans-modal").classList.remove("open");
+  renderAll();
 }
 
 function switchPlansTab(tab) {
@@ -1291,6 +1272,7 @@ function closeVariantEditor(event) {
   if (event && event.target !== event.currentTarget) return;
   document.getElementById("variant-modal").classList.remove("open");
   _currentVariant = null;
+  renderAll();
 }
 
 function renderVariantDayTasks(day) {
