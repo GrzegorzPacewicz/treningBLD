@@ -1220,14 +1220,16 @@ async function onWeekVariantChange() {
 
 function renderVariantsTab() {
   const container = document.getElementById("variants-list");
-  const variants = pbGetVariants().filter(v => !v.hidden);
+  const allVariants = pbGetVariants();
+  const active = allVariants.filter(v => !v.hidden);
+  const archived = allVariants.filter(v => v.hidden);
 
-  if (variants.length === 0) {
+  if (allVariants.length === 0) {
     container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Brak wariantów. Utwórz pierwszy!</p>';
     return;
   }
 
-  container.innerHTML = variants.map(v => `
+  let html = active.map(v => `
     <div class="variant-item" onclick="openVariantEditor('${v.id}')">
       <div>
         <div class="variant-item-name">${v.name}</div>
@@ -1236,17 +1238,35 @@ function renderVariantsTab() {
       <i class="ti ti-chevron-right" style="color: var(--text-secondary)"></i>
     </div>
   `).join("");
+
+  if (archived.length > 0) {
+    html += `<div class="variant-archive-header">Archiwum</div>`;
+    html += archived.map(v => `
+      <div class="variant-item variant-item-archived" onclick="openVariantEditor('${v.id}')">
+        <div>
+          <div class="variant-item-name">${v.name}</div>
+          <div class="variant-item-desc">${v.description || ""}</div>
+        </div>
+        <i class="ti ti-chevron-right" style="color: var(--text-secondary)"></i>
+      </div>
+    `).join("");
+  }
+
+  container.innerHTML = html;
 }
 
 let _currentVariant = null;
 
 function openVariantEditor(variantId) {
   const modal = document.getElementById("variant-modal");
+  const archiveBtn = document.getElementById("variant-archive-btn");
 
   if (variantId) {
     _currentVariant = { ...pbGetVariantById(variantId) };
     document.getElementById("variant-modal-title").textContent = "Edytuj wariant";
     document.getElementById("variant-delete-btn").style.display = "block";
+    archiveBtn.style.display = "block";
+    archiveBtn.textContent = _currentVariant.hidden ? "Przywróć" : "Archiwizuj";
   } else {
     _currentVariant = {
       name: "", description: "",
@@ -1254,6 +1274,7 @@ function openVariantEditor(variantId) {
     };
     document.getElementById("variant-modal-title").textContent = "Nowy wariant";
     document.getElementById("variant-delete-btn").style.display = "none";
+    archiveBtn.style.display = "none";
   }
 
   document.getElementById("variant-id").value = _currentVariant.id || "";
@@ -1391,6 +1412,22 @@ async function deleteCurrentVariant() {
     showToast({ type: "success", title: "Usunięto", message: "Wariant usunięty.", timeout: 2000 });
   } catch (e) {
     handleApiError(e, "usuwanie wariantu");
+  }
+}
+
+async function toggleVariantArchive() {
+  if (!_currentVariant?.id) return;
+
+  _currentVariant.hidden = !_currentVariant.hidden;
+  try {
+    await pbSaveVariant(_currentVariant);
+    closeVariantEditor();
+    renderVariantsTab();
+    renderWeekTab();
+    const msg = _currentVariant.hidden ? "Wariant zarchiwizowany." : "Wariant przywrócony.";
+    showToast({ type: "success", title: "Zapisano", message: msg, timeout: 2000 });
+  } catch (e) {
+    handleApiError(e, "archiwizacja wariantu");
   }
 }
 

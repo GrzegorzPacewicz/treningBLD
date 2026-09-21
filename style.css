@@ -1241,6 +1241,19 @@ body {
   gap: 4px;
 }
 
+.variant-archive-header {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  margin-bottom: 4px;
+  padding-left: 4px;
+}
+
+.variant-item-archived {
+  opacity: 0.5;
+}
+
 /* Focus list */
 .focus-list {
   display: flex;
