@@ -1418,13 +1418,14 @@ async function deleteCurrentVariant() {
 async function toggleVariantArchive() {
   if (!_currentVariant?.id) return;
 
-  _currentVariant.hidden = !_currentVariant.hidden;
+  const wasHidden = _currentVariant.hidden;
+  _currentVariant.hidden = !wasHidden;
   try {
     await pbSaveVariant(_currentVariant);
+    const msg = wasHidden ? "Wariant przywrócony." : "Wariant zarchiwizowany.";
     closeVariantEditor();
     renderVariantsTab();
     renderWeekTab();
-    const msg = _currentVariant.hidden ? "Wariant zarchiwizowany." : "Wariant przywrócony.";
     showToast({ type: "success", title: "Zapisano", message: msg, timeout: 2000 });
   } catch (e) {
     handleApiError(e, "archiwizacja wariantu");
