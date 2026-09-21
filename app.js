@@ -1159,7 +1159,7 @@ function switchPlansTab(tab) {
 
 function renderWeekTab() {
   const select = document.getElementById("week-variant-select");
-  const variants = pbGetVariants();
+  const variants = pbGetVariants().filter(v => !v.hidden);
   const today = getEffectiveToday();
   const weekStart = getWeekStart(today);
   const weekKey = formatDateKey(weekStart);
@@ -1220,7 +1220,7 @@ async function onWeekVariantChange() {
 
 function renderVariantsTab() {
   const container = document.getElementById("variants-list");
-  const variants = pbGetVariants();
+  const variants = pbGetVariants().filter(v => !v.hidden);
 
   if (variants.length === 0) {
     container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Brak wariantów. Utwórz pierwszy!</p>';
