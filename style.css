@@ -470,6 +470,85 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* Collapsed past month */
+.month-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.month-summary-header:hover {
+  background: #fafaf9;
+}
+
+.month-summary-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.month-summary-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.month-summary-count,
+.month-summary-percent {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.month-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.month-summary-bar {
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.month-summary-bar > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.month-summary-percent {
+  min-width: 32px;
+  text-align: right;
+}
+
+.month-summary-header i {
+  color: var(--text-secondary);
+  transform: rotate(-90deg);
+  transition: transform 0.2s;
+}
+
+.month-summary.open .month-summary-header i {
+  transform: none;
+}
+
+.month-weeks {
+  display: none;
+  margin-top: 8px;
+  padding-left: 12px;
+}
+
+.month-summary.open .month-weeks {
+  display: block;
+}
+
 .week-accordion {
   background: var(--card);
   border: 1px solid var(--border);

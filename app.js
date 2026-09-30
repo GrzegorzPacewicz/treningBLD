@@ -624,16 +624,41 @@ function renderHistory() {
     months[monthKey].weeks[weekNum].push(date);
   }
 
-  for (const [monthKey, monthData] of Object.entries(months)) {
+  // Months before the current one collapse into a single summary row,
+  // except the previous month while the current one has fewer than 2 weeks
+  const monthKeys = Object.keys(months);
+  const todayMonthKey = `${today.getFullYear()}-${today.getMonth()}`;
+  const todayMonthIdx = monthKeys.indexOf(todayMonthKey);
+  const todayMonthWeeks = months[todayMonthKey]
+    ? Object.keys(months[todayMonthKey].weeks).length
+    : 0;
+  const firstExpandedIdx = todayMonthWeeks < 2 ? todayMonthIdx - 1 : todayMonthIdx;
+
+  // Newest first
+  for (let m = monthKeys.length - 1; m >= 0; m--) {
+    const monthKey = monthKeys[m];
+    const monthData = months[monthKey];
+    const [year] = monthKey.split("-").map(Number);
+    const monthLabel = year === today.getFullYear() ? monthData.name : `${monthData.name} ${year}`;
+
     const monthGroup = document.createElement("div");
     monthGroup.className = "month-group";
 
-    const monthTitle = document.createElement("div");
-    monthTitle.className = "month-title";
-    monthTitle.textContent = monthData.name;
-    monthGroup.appendChild(monthTitle);
+    const weekNums = Object.keys(monthData.weeks).sort((a, b) => b - a);
+    let weeksContainer = monthGroup;
 
-    for (const [weekNum, days] of Object.entries(monthData.weeks)) {
+    if (m < firstExpandedIdx) {
+      monthGroup.appendChild(buildMonthSummary(monthKey, monthLabel, monthData, today));
+      weeksContainer = monthGroup.querySelector(".month-weeks");
+    } else {
+      const monthTitle = document.createElement("div");
+      monthTitle.className = "month-title";
+      monthTitle.textContent = monthLabel;
+      monthGroup.appendChild(monthTitle);
+    }
+
+    for (const weekNum of weekNums) {
+      const days = monthData.weeks[weekNum];
       const isCurrentWeek = parseInt(weekNum) === currentWeek;
       const weekAccordion = document.createElement("div");
       weekAccordion.className = "week-accordion";
@@ -713,11 +738,53 @@ function renderHistory() {
         weekContent.appendChild(dayRow);
       }
 
-      monthGroup.appendChild(weekAccordion);
+      weeksContainer.appendChild(weekAccordion);
     }
 
     container.appendChild(monthGroup);
   }
+}
+
+// Collapsed month row: completed days / elapsed days, tap to show its weeks
+// Kept across re-renders so an opened month stays open after ticking a task
+const _openMonths = new Set();
+
+function buildMonthSummary(monthKey, label, monthData, today) {
+  let elapsed = 0;
+  let complete = 0;
+  for (const days of Object.values(monthData.weeks)) {
+    for (const day of days) {
+      if (day > today) continue;
+      elapsed++;
+      if (isDayComplete(day).full) complete++;
+    }
+  }
+  const percent = elapsed ? Math.round((complete / elapsed) * 100) : 0;
+
+  const summary = document.createElement("div");
+  summary.className = "month-summary";
+  if (_openMonths.has(monthKey)) summary.classList.add("open");
+  summary.innerHTML = `
+    <div class="month-summary-header" onclick="toggleMonth(this, '${monthKey}')">
+      <div class="month-summary-title">
+        <span class="month-summary-name">${label}</span>
+        <span class="month-summary-count mono">${complete}/${elapsed} dni</span>
+      </div>
+      <div class="month-summary-meta">
+        <div class="month-summary-bar"><div style="width: ${percent}%"></div></div>
+        <span class="month-summary-percent mono">${percent}%</span>
+        <i class="ti ti-chevron-down"></i>
+      </div>
+    </div>
+    <div class="month-weeks"></div>
+  `;
+  return summary;
+}
+
+function toggleMonth(header, monthKey) {
+  const isOpen = header.parentElement.classList.toggle("open");
+  if (isOpen) _openMonths.add(monthKey);
+  else _openMonths.delete(monthKey);
 }
 
 function toggleWeek(header) {
