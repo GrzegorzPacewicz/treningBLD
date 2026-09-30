@@ -151,6 +151,7 @@
           <div class="plans-tabs">
             <button class="plans-tab active" data-tab="week" onclick="switchPlansTab('week')">Ten tydzień</button>
             <button class="plans-tab" data-tab="variants" onclick="switchPlansTab('variants')">Warianty</button>
+            <button class="plans-tab" data-tab="templates" onclick="switchPlansTab('templates')">Zadania</button>
             <button class="plans-tab" data-tab="focus" onclick="switchPlansTab('focus')">Focus</button>
           </div>
 
@@ -173,6 +174,22 @@
             </button>
           </div>
 
+          <!-- Tab: Task templates -->
+          <div class="plans-tab-content hidden" id="plans-tab-templates">
+            <div id="templates-list" class="focus-list"></div>
+            <div class="focus-actions">
+              <button class="btn btn-add" onclick="addTemplateItem()">
+                <i class="ti ti-plus"></i> Dodaj zadanie
+              </button>
+              <div class="save-group">
+                <span class="save-status" id="templates-save-status"></span>
+                <button class="btn btn-primary" id="templates-save-btn" onclick="saveAllTemplates()" disabled>
+                  Zapisz zmiany
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Tab: Focus -->
           <div class="plans-tab-content hidden" id="plans-tab-focus">
             <div id="focus-list" class="focus-list"></div>
@@ -180,9 +197,12 @@
               <button class="btn btn-add" onclick="addFocusItem()">
                 <i class="ti ti-plus"></i> Dodaj zasadę
               </button>
-              <button class="btn btn-primary" id="focus-save-btn" onclick="saveAllFocus()" disabled>
-                Zapisz zmiany
-              </button>
+              <div class="save-group">
+                <span class="save-status" id="focus-save-status"></span>
+                <button class="btn btn-primary" id="focus-save-btn" onclick="saveAllFocus()" disabled>
+                  Zapisz zmiany
+                </button>
+              </div>
             </div>
           </div>
 

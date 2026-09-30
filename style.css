@@ -818,6 +818,19 @@ body {
   margin-top: 20px;
 }
 
+/* Keep save/delete buttons visible at the bottom of scrolling modals */
+.modal-body .form-actions,
+.modal-body .focus-actions {
+  position: sticky;
+  bottom: 0;
+  margin-left: -16px;
+  margin-right: -16px;
+  margin-bottom: -16px;
+  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
 .btn {
   padding: 10px 20px;
   border: none;
@@ -1144,6 +1157,7 @@ body {
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
+  overflow-x: auto;
 }
 
 .plans-tab {
@@ -1392,6 +1406,42 @@ body {
   border-color: var(--accent);
 }
 
+/* Task templates list */
+.templates-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.save-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.save-status {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.save-status.visible {
+  opacity: 1;
+}
+
+.template-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.template-item-actions .btn-icon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* Migrate section */
 .migrate-section {
   margin-top: 24px;
@@ -1462,6 +1512,18 @@ body {
   .variant-modal-content {
     max-width: 100%;
     margin: 0;
+  }
+
+  /* One scroll area instead of a nested one, so the sticky buttons stay reachable */
+  .variant-days {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .modal-content,
+  .variant-modal-content {
+    max-height: 92vh;
+    max-height: 92dvh;
   }
 
   .edit-modal-content {

@@ -64,6 +64,20 @@ WEEK_SCHEDULE: {
 
 Po edycji odśwież stronę.
 
+## Definicje zadań
+
+Zadania dostępne w edytorach (typ + lista szczegółów) edytujesz w panelu planów → zakładka **Zadania**.
+Zapisywane są w kolekcji PocketBase `task_templates`:
+
+- `text` (text, wymagane) — nazwa zadania
+- `details` (json) — lista szczegółów, np. `["5", "10", "15"]`
+- `order` (number) — kolejność
+- `user` (relation → users)
+
+Reguły API jak w `training_focus`. Dopóki kolekcja jest pusta lub nie istnieje, aplikacja używa wbudowanych zadań (`DEFAULT_TASK_TEMPLATES` w `app.js`).
+
+Zadania w wariantach i nadpisaniach dni są zapisywane po nazwie — zmiana nazwy definicji nie zmienia istniejących planów (edytor pokaże starą nazwę jako osobną pozycję).
+
 ## Dane użytkownika
 
 Postępy zapisywane w localStorage pod kluczami `day:YYYY-MM-DD`.

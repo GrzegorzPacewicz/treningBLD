@@ -469,6 +469,101 @@ async function pbDeleteFocusItem(id) {
   _pbFocus = _pbFocus.filter(f => f.id !== id);
 }
 
+// Task templates (definitions of tasks available in editors)
+const TEMPLATES_COLLECTION = "task_templates";
+let _pbTemplates = [];
+
+async function pbFetchTemplates() {
+  try {
+    const res = await fetch(
+      `${PB_URL}/api/collections/${TEMPLATES_COLLECTION}/records?sort=order&perPage=200`,
+      { headers: pbAuthHeaders() }
+    );
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    _pbTemplates = data.items;
+    return _pbTemplates;
+  } catch (err) {
+    console.warn("PocketBase templates fetch failed, using built-in templates:", err);
+    // 404 = collection not created yet, silently fall back to defaults
+    if (typeof handleApiError === "function" && err.status && err.status !== 404) {
+      handleApiError(err, "pobieranie zadań");
+    }
+    _pbTemplates = [];
+    return [];
+  }
+}
+
+function pbGetTemplates() {
+  return _pbTemplates;
+}
+
+async function pbSaveTemplate(template) {
+  if (!pbIsLoggedIn()) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const isUpdate = !!template.id;
+  const url = isUpdate
+    ? `${PB_URL}/api/collections/${TEMPLATES_COLLECTION}/records/${template.id}`
+    : `${PB_URL}/api/collections/${TEMPLATES_COLLECTION}/records`;
+
+  const body = {
+    text: template.text,
+    details: template.details,
+    order: template.order,
+    user: _pbAuthModel?.id
+  };
+  const res = await fetch(url, {
+    method: isUpdate ? "PATCH" : "POST",
+    headers: { "Content-Type": "application/json", ...pbAuthHeaders() },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const record = await res.json();
+  if (isUpdate) {
+    const idx = _pbTemplates.findIndex(t => t.id === record.id);
+    if (idx >= 0) _pbTemplates[idx] = record;
+  } else {
+    _pbTemplates.push(record);
+  }
+  _pbTemplates.sort((a, b) => (a.order || 0) - (b.order || 0));
+  return record;
+}
+
+async function pbDeleteTemplate(id) {
+  if (!pbIsLoggedIn()) {
+    const err = new Error("Musisz być zalogowany");
+    err.status = 401;
+    throw err;
+  }
+
+  const res = await fetch(
+    `${PB_URL}/api/collections/${TEMPLATES_COLLECTION}/records/${id}`,
+    { method: "DELETE", headers: pbAuthHeaders() }
+  );
+
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  _pbTemplates = _pbTemplates.filter(t => t.id !== id);
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     pbFetchOverrides, pbGetOverride, pbSaveOverride, pbDeleteOverride,
@@ -476,6 +571,8 @@ if (typeof module !== "undefined" && module.exports) {
     pbFetchVariants, pbGetVariants, pbGetVariantById, pbSaveVariant, pbDeleteVariant,
     pbFetchSchedule, pbGetSchedule, pbSaveSchedule,
     pbFetchFocus, pbGetFocus, pbSaveFocusItem, pbDeleteFocusItem,
-    PB_URL, COLLECTION, PROGRESS_COLLECTION, VARIANTS_COLLECTION, SCHEDULE_COLLECTION, FOCUS_COLLECTION
+    pbFetchTemplates, pbGetTemplates, pbSaveTemplate, pbDeleteTemplate,
+    PB_URL, COLLECTION, PROGRESS_COLLECTION, VARIANTS_COLLECTION, SCHEDULE_COLLECTION, FOCUS_COLLECTION,
+    TEMPLATES_COLLECTION
   };
 }

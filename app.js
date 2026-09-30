@@ -763,7 +763,8 @@ function closeModal(event) {
 
 let _editTasks = [];
 
-const TASK_TEMPLATES = {
+// Built-in templates, used until task_templates in PocketBase has any records
+const DEFAULT_TASK_TEMPLATES = {
   blddriller_corners: {
     text: "BLD Driller (rogi)",
     details: ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min"]
@@ -805,6 +806,43 @@ const TASK_TEMPLATES = {
     details: ["pełny rest", "lekki trening", "zamiana z innym dniem"]
   }
 };
+
+function getTaskTemplates() {
+  const records = typeof pbGetTemplates === "function" ? pbGetTemplates() : [];
+  if (!records.length) return DEFAULT_TASK_TEMPLATES;
+  const result = {};
+  for (const r of records) {
+    result[r.id] = { text: r.text, details: Array.isArray(r.details) ? r.details : [] };
+  }
+  return result;
+}
+
+// Options for the task type <select>; keeps a task whose text no longer matches any template
+function renderTaskTypeOptions(currentText) {
+  const templates = Object.entries(getTaskTemplates());
+  const known = templates.some(([, t]) => t.text === currentText);
+  let html = `<option value="">-- wybierz --</option>`;
+  if (currentText && !known) {
+    html += `<option value="" selected>${escapeHtml(currentText)}</option>`;
+  }
+  html += templates.map(([key, t]) =>
+    `<option value="${key}" ${t.text === currentText ? "selected" : ""}>${escapeHtml(t.text)}</option>`
+  ).join("");
+  return html;
+}
+
+// Options for the detail <select>; returns { html, isCustomDetail }
+function renderTaskDetailOptions(template, detail) {
+  const isCustomDetail = !!detail && (!template || !template.details.includes(detail));
+  let html = `<option value="">-- szczegóły --</option>`;
+  if (template) {
+    html += template.details.map(d =>
+      `<option value="${escapeHtml(d)}" ${d === detail ? "selected" : ""}>${escapeHtml(d)}</option>`
+    ).join("");
+  }
+  html += `<option value="__custom__" ${isCustomDetail ? "selected" : ""}>Inna...</option>`;
+  return { html, isCustomDetail };
+}
 
 function openEditModal(date) {
   const dateKey = formatDateKey(date);
@@ -852,24 +890,10 @@ function renderEditTasksList() {
     row.className = "edit-task-row";
 
     const templateKey = findTemplateKey(task.text);
-    const template = templateKey ? TASK_TEMPLATES[templateKey] : null;
+    const template = templateKey ? getTaskTemplates()[templateKey] : null;
 
-    let typeOptions = Object.entries(TASK_TEMPLATES).map(([key, t]) => {
-      const selected = t.text === task.text ? "selected" : "";
-      return `<option value="${key}" ${selected}>${t.text}</option>`;
-    }).join("");
-    typeOptions = `<option value="">-- wybierz --</option>` + typeOptions;
-
-    let detailOptions = "";
-    const isCustomDetail = template && task.detail && !template.details.includes(task.detail);
-    if (template) {
-      detailOptions = template.details.map(d => {
-        const selected = d === task.detail ? "selected" : "";
-        return `<option value="${d}" ${selected}>${d}</option>`;
-      }).join("");
-    }
-    detailOptions = `<option value="">-- szczegóły --</option>` + detailOptions;
-    detailOptions += `<option value="__custom__" ${isCustomDetail ? "selected" : ""}>Inna...</option>`;
+    const typeOptions = renderTaskTypeOptions(task.text);
+    const { html: detailOptions, isCustomDetail } = renderTaskDetailOptions(template, task.detail);
 
     const showCustomInput = isCustomDetail || task._customDetail;
 
@@ -891,17 +915,17 @@ function renderEditTasksList() {
 }
 
 function findTemplateKey(text) {
-  for (const [key, t] of Object.entries(TASK_TEMPLATES)) {
+  for (const [key, t] of Object.entries(getTaskTemplates())) {
     if (t.text === text) return key;
   }
   return null;
 }
 
 function changeTaskType(index, templateKey) {
-  const template = TASK_TEMPLATES[templateKey];
+  const template = getTaskTemplates()[templateKey];
   if (template) {
     _editTasks[index].text = template.text;
-    _editTasks[index].detail = template.details[0];
+    _editTasks[index].detail = template.details[0] || "";
     _editTasks[index].id = templateKey + "_" + index;
   } else {
     _editTasks[index].text = "";
@@ -1034,7 +1058,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       pbFetchProgress(),
       pbFetchVariants(),
       pbFetchSchedule(),
-      pbFetchFocus()
+      pbFetchFocus(),
+      pbFetchTemplates()
     ]);
   }
 
@@ -1084,7 +1109,8 @@ async function handleLogin(event) {
       pbFetchProgress(),
       pbFetchVariants(),
       pbFetchSchedule(),
-      pbFetchFocus()
+      pbFetchFocus(),
+      pbFetchTemplates()
     ]);
     renderAll();
     showToast({
@@ -1134,6 +1160,8 @@ function openPlansPanel() {
   // Reset focus items cache
   _focusItems = pbGetFocus().map(f => ({ ...f }));
   _focusDirty = false;
+  setSaveStatus("focus-save-status", "");
+  resetTemplateItems();
 
   document.getElementById("plans-modal").classList.add("open");
   switchPlansTab("week");
@@ -1155,6 +1183,7 @@ function switchPlansTab(tab) {
   if (tab === "week") renderWeekTab();
   if (tab === "variants") renderVariantsTab();
   if (tab === "focus") renderFocusTab();
+  if (tab === "templates") renderTemplatesTab();
 }
 
 function renderWeekTab() {
@@ -1301,26 +1330,15 @@ function renderVariantDayTasks(day) {
   const tasks = _currentVariant[day] || [];
 
   container.innerHTML = tasks.map((t, idx) => {
-    const templateKey = findTemplateKeyByText(t.text);
-    const template = templateKey ? TASK_TEMPLATES[templateKey] : null;
-    const isCustomDetail = template && t.detail && !template.details.includes(t.detail);
+    const templateKey = findTemplateKey(t.text);
+    const template = templateKey ? getTaskTemplates()[templateKey] : null;
+    const { html: detailOptions, isCustomDetail } = renderTaskDetailOptions(template, t.detail);
     const showCustomInput = isCustomDetail || t._customDetail;
-
-    let detailOptions = `<option value="">-- szczegóły --</option>`;
-    if (template) {
-      detailOptions += template.details.map(d =>
-        `<option value="${d}" ${d === t.detail ? "selected" : ""}>${d}</option>`
-      ).join("");
-    }
-    detailOptions += `<option value="__custom__" ${isCustomDetail ? "selected" : ""}>Inna...</option>`;
 
     return `
     <div class="variant-task-row">
       <select onchange="updateVariantTask('${day}', ${idx}, 'type', this.value)">
-        <option value="">-- wybierz --</option>
-        ${Object.entries(TASK_TEMPLATES).map(([key, tmpl]) =>
-          `<option value="${key}" ${t.text === tmpl.text ? "selected" : ""}>${tmpl.text}</option>`
-        ).join("")}
+        ${renderTaskTypeOptions(t.text)}
       </select>
       <select onchange="onVariantDetailChange('${day}', ${idx}, this.value)">
         ${detailOptions}
@@ -1332,13 +1350,6 @@ function renderVariantDayTasks(day) {
       </button>
     </div>
   `}).join("");
-}
-
-function findTemplateKeyByText(text) {
-  for (const [key, tmpl] of Object.entries(TASK_TEMPLATES)) {
-    if (tmpl.text === text) return key;
-  }
-  return null;
 }
 
 function addVariantTask(day) {
@@ -1363,7 +1374,7 @@ function onVariantDetailChange(day, idx, value) {
 
 function updateVariantTask(day, idx, field, value) {
   if (field === "type") {
-    const tmpl = TASK_TEMPLATES[value];
+    const tmpl = getTaskTemplates()[value];
     if (tmpl) {
       _currentVariant[day][idx].text = tmpl.text;
       _currentVariant[day][idx].detail = tmpl.details[0] || "";
@@ -1480,6 +1491,7 @@ function markFocusDirty() {
   _focusDirty = true;
   const saveBtn = document.getElementById("focus-save-btn");
   if (saveBtn) saveBtn.disabled = false;
+  setSaveStatus("focus-save-status", "");
 }
 
 function removeFocusItemLocal(idx) {
@@ -1507,6 +1519,7 @@ function addFocusItem() {
 async function saveAllFocus() {
   const saveBtn = document.getElementById("focus-save-btn");
   if (saveBtn) saveBtn.disabled = true;
+  setSaveStatus("focus-save-status", "Zapisywanie…");
 
   try {
     // Delete removed items
@@ -1528,8 +1541,9 @@ async function saveAllFocus() {
 
     renderFocusTab();
     renderFocusCard();
-    showToast({ type: "success", title: "Zapisano", message: "Zasady zaktualizowane.", timeout: 2000 });
+    setSaveStatus("focus-save-status", "✓ Zapisano");
   } catch (e) {
+    setSaveStatus("focus-save-status", "");
     handleApiError(e, "zapis zasad");
     if (saveBtn) saveBtn.disabled = false;
   }
@@ -1544,6 +1558,159 @@ async function deleteFocusItem(id) {
     showToast({ type: "success", title: "Usunięto", timeout: 1500 });
   } catch (e) {
     handleApiError(e, "usuwanie zasady");
+  }
+}
+
+// Task templates tab
+let _templateItems = [];
+let _templatesDirty = false;
+
+function resetTemplateItems() {
+  const records = pbGetTemplates();
+  // Nothing in PocketBase yet: start from built-ins, saving creates the records
+  _templateItems = records.length
+    ? records.map(r => ({ id: r.id, text: r.text, details: [...(r.details || [])] }))
+    : Object.values(DEFAULT_TASK_TEMPLATES).map(t => ({ text: t.text, details: [...t.details] }));
+  setTemplatesDirty(false);
+  setTemplatesSaveStatus("");
+}
+
+function setTemplatesDirty(dirty) {
+  _templatesDirty = dirty;
+  const saveBtn = document.getElementById("templates-save-btn");
+  if (saveBtn) saveBtn.disabled = !dirty;
+  // Any new edit makes the previous "saved" confirmation stale
+  if (dirty) setTemplatesSaveStatus("");
+}
+
+function setTemplatesSaveStatus(text) {
+  setSaveStatus("templates-save-status", text);
+}
+
+// Inline status next to a "Zapisz zmiany" button
+function setSaveStatus(elementId, text) {
+  const status = document.getElementById(elementId);
+  if (!status) return;
+  status.textContent = text;
+  status.classList.toggle("visible", !!text);
+}
+
+function renderTemplatesTab() {
+  const container = document.getElementById("templates-list");
+  const visibleItems = _templateItems.filter(t => !t._deleted);
+  const usingDefaults = pbGetTemplates().length === 0;
+
+  let html = usingDefaults
+    ? '<p class="templates-note">Zadania wbudowane. Zapisz, żeby przenieść je do bazy i edytować.</p>'
+    : "";
+
+  if (visibleItems.length === 0) {
+    html += '<p style="color: var(--text-secondary); font-size: 13px;">Brak zadań. Dodaj pierwsze!</p>';
+  }
+
+  html += visibleItems.map(item => {
+    const idx = _templateItems.indexOf(item);
+    const isFirst = visibleItems[0] === item;
+    const isLast = visibleItems[visibleItems.length - 1] === item;
+    return `
+    <div class="focus-list-item template-list-item">
+      <div class="focus-list-item-content">
+        <input type="text" value="${escapeHtml(item.text || "")}" placeholder="Nazwa zadania, np. 3BLD solvy"
+               oninput="_templateItems[${idx}].text = this.value; setTemplatesDirty(true)">
+        <input type="text" value="${escapeHtml((item.details || []).join(", "))}"
+               placeholder="Szczegóły po przecinku, np. 5, 10, 15"
+               oninput="_templateItems[${idx}].details = parseTemplateDetails(this.value); setTemplatesDirty(true)">
+      </div>
+      <div class="template-item-actions">
+        <button class="btn-icon" onclick="moveTemplateItem(${idx}, -1)" title="W górę" ${isFirst ? "disabled" : ""}>
+          <i class="ti ti-chevron-up"></i>
+        </button>
+        <button class="btn-icon" onclick="moveTemplateItem(${idx}, 1)" title="W dół" ${isLast ? "disabled" : ""}>
+          <i class="ti ti-chevron-down"></i>
+        </button>
+        <button class="btn-icon btn-remove" onclick="removeTemplateItem(${idx})" title="Usuń">
+          <i class="ti ti-trash"></i>
+        </button>
+      </div>
+    </div>
+  `}).join("");
+
+  container.innerHTML = html;
+  setTemplatesDirty(_templatesDirty || usingDefaults);
+}
+
+function parseTemplateDetails(value) {
+  return value.split(",").map(d => d.trim()).filter(Boolean);
+}
+
+function moveTemplateItem(idx, direction) {
+  // Swap with the nearest non-deleted neighbour
+  let target = idx + direction;
+  while (_templateItems[target] && _templateItems[target]._deleted) target += direction;
+  if (!_templateItems[target]) return;
+  [_templateItems[idx], _templateItems[target]] = [_templateItems[target], _templateItems[idx]];
+  setTemplatesDirty(true);
+  renderTemplatesTab();
+}
+
+function removeTemplateItem(idx) {
+  const item = _templateItems[idx];
+  if (item.id) {
+    item._deleted = true;
+  } else {
+    _templateItems.splice(idx, 1);
+  }
+  setTemplatesDirty(true);
+  renderTemplatesTab();
+}
+
+function addTemplateItem() {
+  _templateItems.push({ text: "", details: [] });
+  setTemplatesDirty(true);
+  renderTemplatesTab();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll("#templates-list input");
+    if (inputs.length) inputs[inputs.length - 2]?.focus();
+  }, 50);
+}
+
+async function saveAllTemplates() {
+  const toSave = _templateItems.filter(t => !t._deleted);
+  const names = toSave.map(t => t.text.trim());
+  if (names.some(n => !n)) {
+    showToast({ type: "warning", title: "Błąd", message: "Każde zadanie musi mieć nazwę.", timeout: 3000 });
+    return;
+  }
+  if (new Set(names).size !== names.length) {
+    showToast({ type: "warning", title: "Błąd", message: "Nazwy zadań muszą być unikalne.", timeout: 3000 });
+    return;
+  }
+
+  const saveBtn = document.getElementById("templates-save-btn");
+  if (saveBtn) saveBtn.disabled = true;
+  setTemplatesSaveStatus("Zapisywanie…");
+
+  try {
+    for (const item of _templateItems.filter(t => t._deleted && t.id)) {
+      await pbDeleteTemplate(item.id);
+    }
+    for (let i = 0; i < toSave.length; i++) {
+      await pbSaveTemplate({
+        id: toSave[i].id,
+        text: toSave[i].text.trim(),
+        details: toSave[i].details,
+        order: i
+      });
+    }
+
+    await pbFetchTemplates();
+    resetTemplateItems();
+    renderTemplatesTab();
+    setTemplatesSaveStatus("✓ Zapisano");
+  } catch (e) {
+    setTemplatesSaveStatus("");
+    handleApiError(e, "zapis zadań");
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
 
