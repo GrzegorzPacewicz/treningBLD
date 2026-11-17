@@ -4,7 +4,7 @@
 Habit tracker do treningu blindfolded speedcubingu (3BLD, 4BLD, 5BLD). Aplikacja PWA do codziennego odhaczania zadań treningowych.
 
 ## Live
-https://treningbld.grzegorzpacewicz.pl (do skonfigurowania)
+https://bldtracker.grzegorzpacewicz.pl
 
 ## Stack
 - Vanilla JS/CSS/HTML, zero frameworków

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bld-tracker-v5';
+const CACHE_NAME = 'bld-tracker-v6';
 const ASSETS = [
   '/',
   '/index.html',
@@ -27,6 +27,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Cache API only accepts GET; let writes (POST/PATCH/DELETE) go straight to the network
+  if (event.request.method !== 'GET') return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {

@@ -4,7 +4,7 @@ Habit tracker do treningu blindfolded speedcubingu (3BLD, 4BLD, 5BLD). Aplikacja
 
 ## Live
 
-https://treningbld.grzegorzpacewicz.pl
+https://bldtracker.grzegorzpacewicz.pl
 
 ## Stack
 
