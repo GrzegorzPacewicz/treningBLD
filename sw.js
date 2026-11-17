@@ -1,10 +1,9 @@
-const CACHE_NAME = 'bld-tracker-v4';
+const CACHE_NAME = 'bld-tracker-v5';
 const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
-  '/plan.js',
   '/pocketbase.js',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap',

@@ -162,8 +162,23 @@ function handleApiError(error, context = "") {
   console.error(`[${context || "API"}]`, error);
 }
 
-// Constants from PLAN
-const START_DATE = PLAN.startDate;
+// Program start: earliest progress entry, else earliest scheduled week, else today.
+// Recomputed after PocketBase data loads (updateStartDate).
+let START_DATE = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+
+function parseDateKey(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function updateStartDate() {
+  const progressKeys = typeof pbGetProgressDates === "function" ? pbGetProgressDates() : [];
+  const scheduleKeys = typeof pbGetScheduleWeeks === "function" ? pbGetScheduleWeeks() : [];
+  const keys = progressKeys.length ? progressKeys : scheduleKeys;
+  if (keys.length) {
+    START_DATE = parseDateKey(keys.slice().sort()[0]);
+  }
+}
 
 const DAY_NAMES = ["Nd", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
 const DAY_NAMES_FULL = [
@@ -271,9 +286,7 @@ function getWeekVariant(date) {
     }
   }
 
-  // Fallback to plan.js
-  const variantName = PLAN.WEEK_SCHEDULE[weekKey] || "default";
-  return PLAN.WEEK_VARIANTS[variantName] || PLAN.WEEK_VARIANTS.default;
+  return {};
 }
 
 function getBaseTasks(date) {
@@ -293,11 +306,6 @@ function getTasksForDate(date) {
       return [{ id: "rest", text: "Odpoczynek", detail: pbOverride.reason || "override" }];
     }
     return pbOverride.new_tasks;
-  }
-
-  // Then check local DAY_OVERRIDES
-  if (PLAN.DAY_OVERRIDES && PLAN.DAY_OVERRIDES[dateKey]) {
-    return PLAN.DAY_OVERRIDES[dateKey];
   }
 
   return getBaseTasks(date);
@@ -488,10 +496,7 @@ function renderFocusCard() {
   const container = document.getElementById("focus-content");
   container.innerHTML = "";
 
-  // Try PocketBase focus first, fallback to plan.js
-  const focusItems = (typeof pbGetFocus === "function" && pbGetFocus().length > 0)
-    ? pbGetFocus()
-    : PLAN.focus;
+  const focusItems = typeof pbGetFocus === "function" ? pbGetFocus() : [];
 
   for (const item of focusItems) {
     const div = document.createElement("div");
@@ -1128,6 +1133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       pbFetchFocus(),
       pbFetchTemplates()
     ]);
+    updateStartDate();
   }
 
   renderAll();
@@ -1179,6 +1185,7 @@ async function handleLogin(event) {
       pbFetchFocus(),
       pbFetchTemplates()
     ]);
+    updateStartDate();
     renderAll();
     showToast({
       type: "success",
@@ -1195,7 +1202,7 @@ function toggleAuth() {
   if (pbIsLoggedIn()) {
     if (confirm("Wylogować?")) {
       pbLogout();
-      updateAuthButton();
+      location.reload();
     }
   } else {
     showLoginModal();
@@ -1781,87 +1788,6 @@ async function saveAllTemplates() {
   }
 }
 
-// Migration from plan.js to PocketBase
-async function migrateFromPlanJS() {
-  if (!pbIsLoggedIn()) {
-    showToast({ type: "error", title: "Błąd", message: "Musisz być zalogowany.", timeout: 3000 });
-    return;
-  }
-
-  if (!confirm("Czy na pewno chcesz zaimportować dane z plan.js do PocketBase?\n\nTo doda warianty, harmonogram i zasady focus.")) {
-    return;
-  }
-
-  const btn = document.getElementById("migrate-btn");
-  if (btn) btn.disabled = true;
-
-  try {
-    let imported = { variants: 0, schedule: 0, focus: 0 };
-
-    // 1. Import WEEK_VARIANTS
-    const variantNameToId = {};
-    for (const [key, variant] of Object.entries(PLAN.WEEK_VARIANTS)) {
-      const data = {
-        name: variant.name || key,
-        description: variant.description || "",
-        monday: variant.monday || [],
-        tuesday: variant.tuesday || [],
-        wednesday: variant.wednesday || [],
-        thursday: variant.thursday || [],
-        friday: variant.friday || [],
-        saturday: variant.saturday || [],
-        sunday: variant.sunday || []
-      };
-      const saved = await pbSaveVariant(data);
-      variantNameToId[key] = saved.id;
-      imported.variants++;
-    }
-
-    // 2. Import WEEK_SCHEDULE
-    for (const [weekStart, variantKey] of Object.entries(PLAN.WEEK_SCHEDULE)) {
-      const variantId = variantNameToId[variantKey];
-      if (variantId) {
-        await pbSaveSchedule(weekStart, variantId);
-        imported.schedule++;
-      }
-    }
-
-    // 3. Import focus
-    for (let i = 0; i < PLAN.focus.length; i++) {
-      const item = PLAN.focus[i];
-      await pbSaveFocusItem({
-        title: item.title,
-        description: item.description,
-        order: i
-      });
-      imported.focus++;
-    }
-
-    // Refresh data
-    await Promise.all([pbFetchVariants(), pbFetchSchedule(), pbFetchFocus()]);
-    _focusItems = pbGetFocus().map(f => ({ ...f }));
-
-    renderWeekTab();
-    renderVariantsTab();
-    renderFocusTab();
-    renderFocusCard();
-    renderWeeklyPlan();
-    renderAll();
-
-    showToast({
-      type: "success",
-      title: "Import zakończony",
-      message: `Zaimportowano: ${imported.variants} wariantów, ${imported.schedule} tygodni, ${imported.focus} zasad.`,
-      timeout: 5000
-    });
-
-  } catch (e) {
-    handleApiError(e, "import danych");
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-
 // Export for Node.js tests
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
@@ -1875,5 +1801,6 @@ if (typeof module !== "undefined" && module.exports) {
     setTestToday,
     getWeekOfProgram,
     getWeekStart,
+    updateStartDate,
   };
 }

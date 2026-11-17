@@ -31,7 +31,7 @@ https://treningbld.grzegorzpacewicz.pl
 ├── index.html      # Główna aplikacja
 ├── style.css       # Style
 ├── app.js          # Logika UI
-├── plan.js         # Konfiguracja planu treningowego
+├── pocketbase.js   # Klient PocketBase (dane, auth)
 ├── sw.js           # Service worker (cache)
 ├── manifest.json   # PWA manifest
 ├── icon.svg        # Ikona aplikacji
@@ -40,29 +40,18 @@ https://treningbld.grzegorzpacewicz.pl
 
 ## Jak zmienić plan treningowy
 
-Edytuj `plan.js`:
+Cały plan jest w PocketBase (`gp1.pecet.it`) i edytuje się go w aplikacji, w **panelu planów** (wymaga zalogowania):
 
-- `startDate` / `endDate` — okres programu
-- `goals` — cele na okres (dyscypliny + targety)
-- `focus` — sekcja "Na co położyć nacisk"
-- `WEEK_VARIANTS` — szablony wariantów tygodniowych (default, focus_3bld, focus_duze)
-- `WEEK_SCHEDULE` — mapa tydzień→wariant (klucz: poniedziałek w formacie ISO)
-- `DAY_OVERRIDES` — jednorazowe nadpisania dni (klucz: data ISO)
+- **Warianty** — szablony tygodni (`weekly_variants`)
+- **Tydzień** — przypisanie wariantu do tygodnia (`weekly_schedule`)
+- **Zasady** — sekcja "Na co położyć nacisk" (`training_focus`)
+- edycja pojedynczego dnia — nadpisania (`training_overrides`)
 
-### Warianty tygodniowe
+Start programu = najwcześniejszy dzień z postępem, a gdy go brak — pierwszy zaplanowany tydzień.
 
-- **default** — zbalansowany trening: 3BLD jako baza, 4/5BLD w chronionych slotach
-- **focus_3bld** — intensywny 3BLD (20-25 solvów), 4/5BLD tylko podtrzymanie
-- **focus_duze** — budowanie 4/5BLD, 3BLD zredukowane do 10 solvów/dzień
+## Dane per użytkownik
 
-Żeby przypisać wariant do tygodnia, dodaj wpis w `WEEK_SCHEDULE`:
-```js
-WEEK_SCHEDULE: {
-  "2026-07-06": "focus_3bld",  // tydzień 6-12 lipca
-}
-```
-
-Po edycji odśwież stronę.
+Każdy rekord ma pole `user` (relacja do `users`). Aplikacja pobiera tylko rekordy zalogowanego użytkownika; bez logowania nic nie pokazuje. Dzięki temu na tej samej bazie może działać kilka osób (np. zawodnicy).
 
 ## Definicje zadań
 

@@ -13,28 +13,15 @@ https://treningbld.grzegorzpacewicz.pl (do skonfigurowania)
 
 ## Struktura plików
 - `index.html` — główna aplikacja (UI + logika)
-- `plan.js` — konfiguracja planu treningowego (daty, zadania, focus)
+- `pocketbase.js` — klient PocketBase (plan, postępy, auth; filtr po użytkowniku)
 - `sw.js` — service worker (cache)
 - `manifest.json` — PWA manifest
 - `icon.svg` — ikona aplikacji
 - `Plan_treningowy_BLD_lipiec-sierpien_2026.md` — dokument źródłowy planu
 
 ## Jak zmienić plan treningowy
-Edytuj `plan.js`:
-- `startDate` / `endDate` — okres programu
-- `focus` — sekcja "Na co położyć nacisk"
-- `WEEK_VARIANTS` — szablony wariantów tygodniowych (każde zadanie 4BLD ma pole `count`)
-- `WEEK_SCHEDULE` — mapa tydzień→wariant (klucz: poniedziałek ISO)
-- `DAY_OVERRIDES` — jednorazowe nadpisania dni (klucz: data ISO)
-
-Po edycji odśwież stronę.
-
-## Warianty tygodniowe
-System periodyzacji z 3 szablonami:
-- **default** — zbalansowany (3BLD baza + 4/5BLD chronione sloty)
-- **focus_3bld** — intensywny 3BLD (20-25 solvów), 4/5BLD podtrzymanie
-- **focus_duze** — budowanie 4/5BLD, 3BLD zredukowane
+Plan jest w PocketBase i edytuje się go w aplikacji (panel planów). Szczegóły w README.
 
 ## Dane użytkownika
-Postępy zapisywane w localStorage pod kluczami `day:YYYY-MM-DD`.
+Postępy w PocketBase (`training_progress`, klucz `date`), filtrowane po polu `user`.
 Zmiana wariantu nie kasuje postępów (klucz bez nazwy wariantu).

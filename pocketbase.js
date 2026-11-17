@@ -188,6 +188,10 @@ async function pbFetchProgress() {
   }
 }
 
+function pbGetProgressDates() {
+  return Object.keys(_pbProgress);
+}
+
 function pbGetProgress(dateKey) {
   return _pbProgress[dateKey] || { tasks: {}, tags: {} };
 }
@@ -346,6 +350,10 @@ async function pbFetchSchedule() {
     }
     return {};
   }
+}
+
+function pbGetScheduleWeeks() {
+  return Object.keys(_pbSchedule);
 }
 
 function pbGetSchedule(weekStart) {

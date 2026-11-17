@@ -1,8 +1,5 @@
 const assert = require("assert");
 
-// Load PLAN first (app.js depends on it being global)
-global.PLAN = require("./plan.js");
-
 // Mock localStorage for Node.js
 global.localStorage = {
   _data: {},
@@ -27,6 +24,44 @@ global.document = {
 // Mock navigator for Node.js
 global.navigator = {};
 
+// Mock PocketBase data layer (plan lives in PocketBase, not in code)
+const VARIANTS = {
+  v_std: {
+    id: "v_std",
+    name: "Tydzień standardowy",
+    monday: [{ id: "solve3bld", text: "3BLD", detail: "10 prób" }],
+    tuesday: [
+      { id: "speed_memo", text: "Speed memo" },
+      { id: "solve3bld_extra", text: "3BLD extra" },
+    ],
+    wednesday: [{ id: "solve3bld", text: "3BLD" }],
+    thursday: [{ id: "4bld", text: "4BLD", detail: "3 próby" }],
+    friday: [{ id: "rest", text: "Odpoczynek" }],
+    saturday: [{ id: "solve3bld", text: "3BLD" }],
+    sunday: [{ id: "solve3bld", text: "3BLD" }],
+  },
+  v_big: {
+    id: "v_big",
+    name: "Nacisk na 4/5BLD",
+    monday: [{ id: "solve3bld", text: "3BLD", detail: "20–25 prób" }],
+    wednesday: [{ id: "wed_5bld", text: "5BLD" }],
+    thursday: [{ id: "4bld", text: "4BLD" }],
+  },
+};
+const SCHEDULE = {
+  "2026-06-29": { week_start: "2026-06-29", variant: "v_std" },
+  "2026-07-06": { week_start: "2026-07-06", variant: "v_std" },
+  "2026-07-13": { week_start: "2026-07-13", variant: "v_big" },
+};
+const OVERRIDES = {
+  "2026-07-18": { date: "2026-07-18", new_tasks: "rest", reason: "wyjazd" },
+};
+global.pbGetSchedule = (week) => SCHEDULE[week] || null;
+global.pbGetVariantById = (id) => VARIANTS[id] || null;
+global.pbGetOverride = (date) => OVERRIDES[date] || null;
+global.pbGetProgressDates = () => ["2026-07-03", "2026-07-01", "2026-07-02"];
+global.pbGetScheduleWeeks = () => Object.keys(SCHEDULE);
+
 const {
   formatDateKey,
   getTasksForDay,
@@ -37,7 +72,10 @@ const {
   setTestToday,
   getWeekOfProgram,
   getWeekStart,
+  updateStartDate,
 } = require("./app.js");
+
+updateStartDate(); // earliest progress date → 1 lipca 2026
 
 let passed = 0;
 let failed = 0;
@@ -66,201 +104,120 @@ test("formatDateKey: pads single digit month and day", () => {
 });
 
 // getTasksForDay tests
-test("getTasksForDay: returns monday tasks (focus_3bld variant)", () => {
-  // 6 lipca 2026 jest w tygodniu focus_3bld wg WEEK_SCHEDULE
-  const monday = new Date(2026, 6, 6);
-  const tasks = getTasksForDay(monday);
+test("getTasksForDay: returns monday tasks from scheduled variant", () => {
+  const tasks = getTasksForDay(new Date(2026, 6, 6));
   assert.strictEqual(tasks.length, 1);
   assert.strictEqual(tasks[0].id, "solve3bld");
 });
 
-test("getTasksForDay: returns tuesday tasks (focus_3bld variant)", () => {
-  // 7 lipca 2026 jest w tygodniu focus_3bld - wtorek ma speed-memo + solve3bld_extra
-  const tuesday = new Date(2026, 6, 7);
-  const tasks = getTasksForDay(tuesday);
-  assert.strictEqual(tasks.length, 2);
-  assert.strictEqual(tasks[0].id, "speed_memo");
-  assert.strictEqual(tasks[1].id, "solve3bld_extra");
+test("getTasksForDay: returns tuesday tasks in order", () => {
+  const tasks = getTasksForDay(new Date(2026, 6, 7));
+  assert.deepStrictEqual(tasks.map((t) => t.id), ["speed_memo", "solve3bld_extra"]);
 });
 
-test("getTasksForDay: returns 4BLD task on thursday (default variant)", () => {
-  // 2 lipca 2026 (czwartek) jest w tygodniu default
-  const thursday = new Date(2026, 6, 2);
-  const tasks = getTasksForDay(thursday);
-  const p4Task = tasks.find((t) => t.id === "4bld");
-  assert.ok(p4Task);
-  assert.strictEqual(p4Task.detail, "3 próby");
+test("getTasksForDay: returns empty list for day missing in variant", () => {
+  const tasks = getTasksForDay(new Date(2026, 6, 14)); // wtorek w v_big
+  assert.strictEqual(tasks.length, 0);
 });
 
-test("getTasksForDay: returns 4BLD task on thursday (focus_duze variant)", () => {
-  // 16 lipca 2026 (czwartek) w tygodniu focus_duze
-  const thursday = new Date(2026, 6, 16);
-  const tasks = getTasksForDay(thursday);
-  const p4Task = tasks.find((t) => t.id === "4bld");
-  assert.ok(p4Task);
+test("getTasksForDay: returns empty list for unscheduled week", () => {
+  const tasks = getTasksForDay(new Date(2026, 8, 7)); // 7 września — brak harmonogramu
+  assert.strictEqual(tasks.length, 0);
+});
+
+// getWeekVariant tests
+test("getWeekVariant: returns scheduled variant", () => {
+  assert.strictEqual(getWeekVariant(new Date(2026, 6, 15)).name, "Nacisk na 4/5BLD");
+});
+
+test("getWeekVariant: returns empty object when week not scheduled", () => {
+  assert.deepStrictEqual(getWeekVariant(new Date(2026, 8, 7)), {});
+});
+
+// getTasksForDate (overrides)
+test("getTasksForDate: override 'rest' replaces variant tasks", () => {
+  const tasks = getTasksForDate(new Date(2026, 6, 18));
+  assert.strictEqual(tasks.length, 1);
+  assert.strictEqual(tasks[0].id, "rest");
+  assert.strictEqual(tasks[0].detail, "wyjazd");
+});
+
+test("getTasksForDate: no override → variant tasks", () => {
+  const tasks = getTasksForDate(new Date(2026, 6, 13));
+  assert.strictEqual(tasks[0].detail, "20–25 prób");
 });
 
 // isDayComplete tests
 test("isDayComplete: returns full=false, partial=false for empty day", () => {
   localStorage.clear();
-  const monday = new Date(2026, 6, 6);
-  const status = isDayComplete(monday);
+  const status = isDayComplete(new Date(2026, 6, 6));
   assert.strictEqual(status.full, false);
   assert.strictEqual(status.partial, false);
 });
 
 test("isDayComplete: returns full=true when all tasks done", () => {
   localStorage.clear();
-  // 6 lipca 2026 (poniedziałek) w focus_3bld - ma tylko solve3bld
-  const monday = new Date(2026, 6, 6);
-  localStorage.setItem("day:2026-07-06", JSON.stringify({
-    solve3bld: true
-  }));
-  const status = isDayComplete(monday);
+  localStorage.setItem("day:2026-07-06", JSON.stringify({ solve3bld: true }));
+  const status = isDayComplete(new Date(2026, 6, 6));
   assert.strictEqual(status.full, true);
   assert.strictEqual(status.partial, false);
 });
 
 test("isDayComplete: returns partial=true when some tasks done", () => {
   localStorage.clear();
-  // 7 lipca (wtorek) w focus_3bld ma 2 taski: speed_memo + solve3bld_extra
-  const tuesday = new Date(2026, 6, 7);
   localStorage.setItem(
     "day:2026-07-07",
     JSON.stringify({ speed_memo: true, solve3bld_extra: false })
   );
-  const status = isDayComplete(tuesday);
+  const status = isDayComplete(new Date(2026, 6, 7));
   assert.strictEqual(status.full, false);
   assert.strictEqual(status.partial, true);
 });
 
 // calculateStreak tests
-test("calculateStreak: includes today when completed", () => {
+test("calculateStreak: counts back to program start", () => {
   localStorage.clear();
-  setTestToday(new Date(2026, 6, 5)); // Mock: "dziś" to 5 lipca
-  // Tydzień default (29 cze - 5 lip):
-  // 1 lipca (środa): corners_warmup_wed + solve3bld
-  // 2 lipca (czwartek): p4_1..p4_4 (4 próby) + thu_5bld + centers
-  // 3 lipca (piątek): rest (odpoczynek)
-  // 4 lipca (sobota): edges_sat + solve3bld + sat_p4_1..sat_p4_4
-  // 5 lipca (niedziela): edges_sun + solve3bld + sun_p4_1..sun_p4_4 + centers_review
-  localStorage.setItem("day:2026-07-01", JSON.stringify({
-    corners_warmup_wed: true,
-    solve3bld: true
-  }));
-  localStorage.setItem("day:2026-07-02", JSON.stringify({
-    "4bld": true,
-    thu_5bld: true
-  }));
+  setTestToday(new Date(2026, 6, 5)); // "dziś" 5 lipca, start 1 lipca
+  localStorage.setItem("day:2026-07-01", JSON.stringify({ solve3bld: true }));
+  localStorage.setItem("day:2026-07-02", JSON.stringify({ "4bld": true }));
   localStorage.setItem("day:2026-07-03", JSON.stringify({ rest: true }));
-  localStorage.setItem("day:2026-07-04", JSON.stringify({
-    edges_sat: true,
-    solve3bld: true,
-    "4bld": true
-  }));
-  localStorage.setItem("day:2026-07-05", JSON.stringify({
-    edges_sun: true,
-    solve3bld: true,
-    "4bld": true
-  }));
-
-  // Streak powinien być 5 (1-5 lipca)
-  const streak = calculateStreak();
-  assert.strictEqual(streak, 5);
-  setTestToday(null); // Reset mock
+  localStorage.setItem("day:2026-07-04", JSON.stringify({ solve3bld: true }));
+  localStorage.setItem("day:2026-07-05", JSON.stringify({ solve3bld: true }));
+  assert.strictEqual(calculateStreak(), 5);
+  setTestToday(null);
 });
 
 test("calculateStreak: returns 0 when today not completed", () => {
   localStorage.clear();
-  setTestToday(new Date(2026, 6, 3)); // Mock: "dziś" to 3 lipca (piątek)
-  // 3 lipca (piątek): rest — nieukończony
-  // day:2026-07-03 brak = nieukończony
-
-  const streak = calculateStreak();
-  assert.strictEqual(streak, 0);
+  setTestToday(new Date(2026, 6, 3));
+  assert.strictEqual(calculateStreak(), 0);
   setTestToday(null);
 });
 
 // getWeekOfProgram tests
 test("getWeekOfProgram: returns 0 for first week", () => {
-  const date = new Date(2026, 6, 3); // 3 lipca 2026
-  assert.strictEqual(getWeekOfProgram(date), 0);
+  assert.strictEqual(getWeekOfProgram(new Date(2026, 6, 3)), 0);
 });
 
 test("getWeekOfProgram: returns 1 for second week", () => {
-  const date = new Date(2026, 6, 10); // 10 lipca 2026
-  assert.strictEqual(getWeekOfProgram(date), 1);
+  assert.strictEqual(getWeekOfProgram(new Date(2026, 6, 10)), 1);
 });
 
 // getWeekStart tests
 test("getWeekStart: returns Monday for any day in week", () => {
-  const wednesday = new Date(2026, 6, 8); // 8 lipca 2026 (środa)
-  const weekStart = getWeekStart(wednesday);
-  assert.strictEqual(weekStart.getDay(), 1); // Monday
-  assert.strictEqual(weekStart.getDate(), 6); // 6 lipca
-});
-
-test("getWeekStart: returns same Monday when input is Monday", () => {
-  const monday = new Date(2026, 6, 6); // 6 lipca 2026 (poniedziałek)
-  const weekStart = getWeekStart(monday);
+  const weekStart = getWeekStart(new Date(2026, 6, 8));
+  assert.strictEqual(weekStart.getDay(), 1);
   assert.strictEqual(weekStart.getDate(), 6);
 });
 
+test("getWeekStart: returns same Monday when input is Monday", () => {
+  assert.strictEqual(getWeekStart(new Date(2026, 6, 6)).getDate(), 6);
+});
+
 test("getWeekStart: handles Sunday correctly (returns previous Monday)", () => {
-  const sunday = new Date(2026, 6, 12); // 12 lipca 2026 (niedziela)
-  const weekStart = getWeekStart(sunday);
-  assert.strictEqual(weekStart.getDay(), 1); // Monday
-  assert.strictEqual(weekStart.getDate(), 6); // 6 lipca (poprzedni poniedziałek)
-});
-
-// getWeekVariant tests
-test("getWeekVariant: returns 'default' when no entry in WEEK_SCHEDULE", () => {
-  // Używamy daty spoza zdefiniowanych tygodni
-  const monday = new Date(2026, 8, 7); // 7 września 2026 - brak wpisu
-  assert.strictEqual(getWeekVariant(monday), "default");
-});
-
-test("getWeekVariant: returns scheduled variant from WEEK_SCHEDULE", () => {
-  const originalValue = PLAN.WEEK_SCHEDULE["2026-07-13"];
-  PLAN.WEEK_SCHEDULE["2026-07-13"] = "focus_3bld";
-  const wednesday = new Date(2026, 6, 15); // 15 lipca (środa w tygodniu 13-19 lipca)
-  assert.strictEqual(getWeekVariant(wednesday), "focus_3bld");
-  PLAN.WEEK_SCHEDULE["2026-07-13"] = originalValue;
-});
-
-test("getTasksForDate: uses focus_3bld variant tasks", () => {
-  const originalValue = PLAN.WEEK_SCHEDULE["2026-07-13"];
-  PLAN.WEEK_SCHEDULE["2026-07-13"] = "focus_3bld";
-  const monday = new Date(2026, 6, 13); // 13 lipca (poniedziałek)
-  const tasks = getTasksForDate(monday);
-  assert.strictEqual(tasks.length, 1);
-  assert.strictEqual(tasks[0].id, "solve3bld");
-  assert.strictEqual(tasks[0].detail, "20–25 prób");
-  PLAN.WEEK_SCHEDULE["2026-07-13"] = originalValue;
-});
-
-test("getTasksForDate: uses focus_duze variant tasks", () => {
-  const wednesday = new Date(2026, 6, 15); // 15 lipca (środa) - tydzień focus_duze
-  const tasks = getTasksForDate(wednesday);
-  const taskIds = tasks.map(t => t.id);
-  assert.ok(taskIds.includes("wed_5bld"));
-});
-
-test("getTasksForDate: DAY_OVERRIDES takes precedence over variant", () => {
-  // 18 lipca 2026 (sobota) ma override na odpoczynek
-  const saturday = new Date(2026, 6, 18);
-  const tasks = getTasksForDate(saturday);
-  assert.strictEqual(tasks.length, 1);
-  assert.strictEqual(tasks[0].id, "rest");
-});
-
-test("getTasksForDate: returns normal tasks when no override", () => {
-  // 19 lipca 2026 (niedziela) - brak override, normalne zadania z focus_duze
-  const sunday = new Date(2026, 6, 19);
-  const tasks = getTasksForDate(sunday);
-  const taskIds = tasks.map(t => t.id);
-  assert.ok(taskIds.includes("solve3bld"));
-  assert.ok(taskIds.includes("4bld"));
+  const weekStart = getWeekStart(new Date(2026, 6, 12));
+  assert.strictEqual(weekStart.getDay(), 1);
+  assert.strictEqual(weekStart.getDate(), 6);
 });
 
 // Summary
