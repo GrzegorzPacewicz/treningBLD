@@ -55,6 +55,13 @@ function pbLogout() {
   localStorage.removeItem("pb_auth_model");
 }
 
+// Every record belongs to a user; only the logged-in user's records are fetched.
+// Logged out → no data (an impossible filter instead of everyone's records).
+function pbUserFilter() {
+  const id = pbIsLoggedIn() ? _pbAuthModel?.id : null;
+  return `filter=${encodeURIComponent(`user="${id || "-"}"`)}`;
+}
+
 function pbAuthHeaders() {
   if (!_pbAuthToken) return {};
   return { "Authorization": _pbAuthToken };
@@ -63,7 +70,8 @@ function pbAuthHeaders() {
 async function pbFetchOverrides() {
   try {
     const res = await fetch(
-      `${PB_URL}/api/collections/${COLLECTION}/records?sort=-created&perPage=500`
+      `${PB_URL}/api/collections/${COLLECTION}/records?sort=-created&perPage=500&${pbUserFilter()}`,
+      { headers: pbAuthHeaders() }
     );
     if (!res.ok) {
       const err = new Error(`HTTP ${res.status}`);
@@ -162,7 +170,8 @@ let _pbProgressIds = {};
 async function pbFetchProgress() {
   try {
     const res = await fetch(
-      `${PB_URL}/api/collections/${PROGRESS_COLLECTION}/records?perPage=500`
+      `${PB_URL}/api/collections/${PROGRESS_COLLECTION}/records?perPage=500&${pbUserFilter()}`,
+      { headers: pbAuthHeaders() }
     );
     if (!res.ok) {
       const err = new Error(`HTTP ${res.status}`);
@@ -238,7 +247,7 @@ let _pbVariants = [];
 async function pbFetchVariants() {
   try {
     const res = await fetch(
-      `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records?perPage=100`,
+      `${PB_URL}/api/collections/${VARIANTS_COLLECTION}/records?perPage=100&${pbUserFilter()}`,
       { headers: pbAuthHeaders() }
     );
     if (!res.ok) {
@@ -329,7 +338,7 @@ let _pbSchedule = {};
 async function pbFetchSchedule() {
   try {
     const res = await fetch(
-      `${PB_URL}/api/collections/${SCHEDULE_COLLECTION}/records?perPage=200`,
+      `${PB_URL}/api/collections/${SCHEDULE_COLLECTION}/records?perPage=200&${pbUserFilter()}`,
       { headers: pbAuthHeaders() }
     );
     if (!res.ok) {
@@ -396,7 +405,7 @@ let _pbFocus = [];
 async function pbFetchFocus() {
   try {
     const res = await fetch(
-      `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records?sort=order&perPage=50`,
+      `${PB_URL}/api/collections/${FOCUS_COLLECTION}/records?sort=order&perPage=50&${pbUserFilter()}`,
       { headers: pbAuthHeaders() }
     );
     if (!res.ok) {
@@ -484,7 +493,7 @@ let _pbTemplates = [];
 async function pbFetchTemplates() {
   try {
     const res = await fetch(
-      `${PB_URL}/api/collections/${TEMPLATES_COLLECTION}/records?sort=order&perPage=200`,
+      `${PB_URL}/api/collections/${TEMPLATES_COLLECTION}/records?sort=order&perPage=200&${pbUserFilter()}`,
       { headers: pbAuthHeaders() }
     );
     if (!res.ok) {
